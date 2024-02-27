@@ -72,15 +72,34 @@ def create_tables():
 
 
 def clear_tables():
-    # TODO: implement
-    pass
-
+    # Could potentially need to be DELETE instead of TRUNCATE
+    clear_tables_query = """
+    TRUNCATE TABLE Owner;
+    TRUNCATE TABLE Customer;
+    TRUNCATE TABLE Apartment;
+    TRUNCATE TABLE Reservation;
+    TRUNCATE TABLE Review;
+    """
+    conn = Connector.DBConnector()
+    conn.execute(clear_tables_query)
+    conn.commit()
+    conn.close()
 
 def drop_tables():
-    # TODO: implement
-    pass
+    drop_tables_query = """
+    DROP TABLE Owner;
+    DROP TABLE Customer;
+    DROP TABLE Apartment;
+    DROP TABLE Reservation;
+    DROP TABLE Review;
+    """
+    conn = Connector.DBConnector()
+    conn.execute(drop_tables_query)
+    conn.commit()
+    conn.close()
 
 
+#Add an owner to the database
 def add_owner(owner: Owner) -> ReturnValue:
     owner_id = owner.get_owner_id()
     owner_name = owner.get_owner_name()
