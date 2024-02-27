@@ -75,16 +75,28 @@ def clear_tables():
     # TODO: implement
     pass
 
+
 def drop_tables():
     # TODO: implement
     pass
 
-#Add an owner to the database
-def add_owner(owner: Owner) -> ReturnValue:
-    # TODO: implement
-    pass
 
-#Get an owner from the database.
+def add_owner(owner: Owner) -> ReturnValue:
+    owner_id = owner.get_owner_id()
+    owner_name = owner.get_owner_name()
+    add_owner_query = f"""
+    INSERT INTO Owner (OID, Name)
+    VALUES ({owner_id}, '{owner_name}')
+    """
+    conn = Connector.DBConnector()
+    try:
+        conn.execute(add_owner_query)
+    except exception_list as e:
+        conn.close()
+        return handle_errors(e)
+    conn.commit()
+    conn.close()
+
 def get_owner(owner_id: int) -> Owner:
     # TODO: implement
     pass
@@ -217,3 +229,46 @@ Generate an approximation for all apartments where it is possible. """
 def get_apartment_recommendation(customer_id: int) -> List[Tuple[Apartment, float]]:
     # TODO: implement
     pass
+
+"""
+class ConnectionInvalid(_Exceptions):
+class NOT_NULL_VIOLATION(_Exceptions):
+class FOREIGN_KEY_VIOLATION(_Exceptions):
+class UNIQUE_VIOLATION(_Exceptions):
+class CHECK_VIOLATION(_Exceptions):
+class database_ini_ERROR(_Exceptions):
+class UNKNOWN_ERROR(_Exceptions):
+"""
+"""
+class ReturnValue(Enum):
+    OK = 0
+    NOT_EXISTS = 1
+    ALREADY_EXISTS = 2
+    ERROR = 3
+    BAD_PARAMS = 4
+"""
+def handle_errors(e: DatabaseException):
+    e_name  = e.__str__()
+    if e_name == 'UNIQUE_VIOLATION':
+        return ReturnValue['ALREADY_EXISTS']
+    elif e_name == 'NOT_NULL_VIOLATION':
+        return ReturnValue['BAD_PARAMS']
+    elif e_name == 'FOREIGN_KEY_VIOLATION':
+        return ReturnValue['BAD_PARAMS']
+    elif e_name == 'CHECK_VIOLATION':
+        return ReturnValue['BAD_PARAMS']
+    elif e_name == 'database_ini_ERROR':
+        return ReturnValue['ERROR']
+    elif e_name == 'UNKNOWN_ERROR':
+        return ReturnValue['ERROR']
+    elif e_name == 'ConnectionInvalid':
+        return ReturnValue['ERROR']
+
+exception_list = (DatabaseException.ConnectionInvalid,
+                  DatabaseException.NOT_NULL_VIOLATION,
+                  DatabaseException.FOREIGN_KEY_VIOLATION,
+                  DatabaseException.UNIQUE_VIOLATION,
+                  DatabaseException.CHECK_VIOLATION,
+                  DatabaseException.database_ini_ERROR,
+                  DatabaseException.UNKNOWN_ERROR
+                  )
