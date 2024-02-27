@@ -116,82 +116,82 @@ def add_owner(owner: Owner) -> ReturnValue:
     conn.commit()
     conn.close()
 
-def get_owner(owner_id: int) -> Owner:
+def get_owner(owner_id: int) -> Owner: #Doron
     # TODO: implement
     pass
 
 #Delete an owner from the database.
-def delete_owner(owner_id: int) -> ReturnValue:
+def delete_owner(owner_id: int) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Add an apartment to the database.
-def add_apartment(apartment: Apartment) -> ReturnValue:
+def add_apartment(apartment: Apartment) -> ReturnValue: #Doron
     # TODO: implement
     pass
 
 #Get an apartment from the database.
-def get_apartment(apartment_id: int) -> Apartment:
+def get_apartment(apartment_id: int) -> Apartment: #Daniel
     # TODO: implement
     pass
 
 #Delete an apartment from the database.
-def delete_apartment(apartment_id: int) -> ReturnValue:
+def delete_apartment(apartment_id: int) -> ReturnValue: #Doron
     # TODO: implement
     pass
 
 #Add a customer to the database.
-def add_customer(customer: Customer) -> ReturnValue:
+def add_customer(customer: Customer) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Get a customer from the database.
-def get_customer(customer_id: int) -> Customer:
+def get_customer(customer_id: int) -> Customer: #Doron
     # TODO: implement
     pass
 
 #Delete a customer from the database.
-def delete_customer(customer_id: int) -> ReturnValue:
+def delete_customer(customer_id: int) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Customer made a reservation of apartment from start_date to end_date and paid total_price
-def customer_made_reservation(customer_id: int, apartment_id: int, start_date: date, end_date: date, total_price: float) -> ReturnValue:
+def customer_made_reservation(customer_id: int, apartment_id: int, start_date: date, end_date: date, total_price: float) -> ReturnValue: #Doron
     # TODO: implement
     pass
 
 #Remove a reservation from the database.
-def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_date: date) -> ReturnValue:
+def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_date: date) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Customer reviewed apartment on date review_date and gave it rating stars, with text review_text.
-def customer_reviewed_apartment(customer_id: int, apartment_id: int, review_date: date, rating: int, review_text: str) -> ReturnValue:
+def customer_reviewed_apartment(customer_id: int, apartment_id: int, review_date: date, rating: int, review_text: str) -> ReturnValue: #Doron
     # TODO: implement
     pass
 
 #Customer decided to update their review of apartment on update_date and changed his rating to new_rating and the review text to new_text
-def customer_updated_review(customer_id: int, apartmetn_id: int, update_date: date, new_rating: int, new_text: str) -> ReturnValue:
+def customer_updated_review(customer_id: int, apartmetn_id: int, update_date: date, new_rating: int, new_text: str) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Owner owns apartment. An apartment can be owned by at most one owner.
-def owner_owns_apartment(owner_id: int, apartment_id: int) -> ReturnValue:
+def owner_owns_apartment(owner_id: int, apartment_id: int) -> ReturnValue: #Doron
     # TODO: implement
     pass
 
 #Owner dropped apartment and does not own it anymore.
-def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue:
+def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue: #Daniel
     # TODO: implement
     pass
 
 #Get the owner of apartment.
-def get_apartment_owner(apartment_id: int) -> Owner:
+def get_apartment_owner(apartment_id: int) -> Owner: #Doron
     # TODO: implement
     pass
 
 #Get a list of all apartments owned by owner.
-def get_owner_apartments(owner_id: int) -> List[Apartment]:
+def get_owner_apartments(owner_id: int) -> List[Apartment]: #Daniel
     # TODO: implement
     pass
 
