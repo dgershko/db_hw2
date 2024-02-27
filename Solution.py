@@ -14,8 +14,61 @@ from Business.Apartment import Apartment
 # ---------------------------------- CRUD API: ----------------------------------
 
 def create_tables():
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    create_owner_table = """
+    CREATE TABLE Owner (
+        OID INT PRIMARY KEY CHECK(OID > 0),
+        Name VARCHAR(50) NOT NULL
+    );
+    """
+    create_customer_table = """
+    CREATE TABLE Customer (
+        CID INT PRIMARY KEY CHECK(CID > 0),
+        Name VARCHAR(50) NOT NULL
+    );
+    """
+    create_apt_table = """
+    CREATE TABLE Apartment (
+        AID INT PRIMARY KEY CHECK(AID > 0),
+        Address VARCHAR(150) NOT NULL,
+        City VARCHAR(50) NOT NULL,
+        Country VARCHAR(50) NOT NULL,
+        UNIQUE (Address, Country, City),
+        Size INT NOT NULL CHECK(Size > 0),
+        OwnerID INT NOT NULL CHECK(OwnerID > 0),
+        FOREIGN KEY (OwnerID) REFERENCES Owner(OID)
+    );
+    """
+    create_reservation_table = """
+    CREATE TABLE Reservation (
+        RID INT PRIMARY KEY CHECK(RID > 0),
+        CustomerID INT NOT NULL CHECK(CustomerID > 0),
+        ApartmentID INT NOT NULL CHECK(ApartmentID > 0),
+        FOREIGN KEY (CustomerID) REFERENCES Customer(CID),
+        FOREIGN KEY (ApartmentID) REFERENCES Apartment(AID),
+        StartDate DATE NOT NULL,
+        EndDate DATE NOT NULL,
+        CHECK(EndDate > StartDate),
+        UNIQUE(ApartmentID, StartDate),
+        UNIQUE(ApartmentID, EndDate),
+        Price DECIMAL NOT NULL CHECK(Price > 0)
+    );
+    """
+    create_review_table = """
+    CREATE TABLE Review (
+        CustomerID INT NOT NULL CHECK(CustomerID > 0),
+        ApartmentID INT NOT NULL CHECK(ApartmentID > 0),
+        FOREIGN KEY (CustomerID) REFERENCES Customer(CID),
+        FOREIGN KEY (ApartmentID) REFERENCES Apartment(AID),
+        Rating INT NOT NULL CHECK(Rating >= 0 AND Rating <= 10),
+        ReviewDate DATE NOT NULL,
+        ReviewText TEXT
+    );
+    """
+    full_query = create_customer_table + create_owner_table + create_apt_table + create_reservation_table + create_review_table
+    conn.execute(full_query)
+    conn.commit()
+    conn.close()
 
 
 def clear_tables():
