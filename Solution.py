@@ -35,34 +35,53 @@ def create_tables():
         Country VARCHAR(50) NOT NULL,
         UNIQUE (Address, Country, City),
         Size INT NOT NULL CHECK(Size > 0),
-        OwnerID INT NOT NULL CHECK(OwnerID > 0),
+        OwnerID INT,
         FOREIGN KEY (OwnerID) REFERENCES Owner(OID)
+            ON DELETE SET NULL
+            ON UPDATE CASCADE,
     );
     """
     create_reservation_table = """
     CREATE TABLE Reservation (
-        RID INT PRIMARY KEY CHECK(RID > 0),
-        CustomerID INT NOT NULL CHECK(CustomerID > 0),
-        ApartmentID INT NOT NULL CHECK(ApartmentID > 0),
-        FOREIGN KEY (CustomerID) REFERENCES Customer(CID),
-        FOREIGN KEY (ApartmentID) REFERENCES Apartment(AID),
+        ReservationID SERIAL PRIMARY KEY,
+        CustomerID INT NOT NULL,
+        ApartmentID INT NOT NULL,
         StartDate DATE NOT NULL,
         EndDate DATE NOT NULL,
         CHECK(EndDate > StartDate),
         UNIQUE(ApartmentID, StartDate),
         UNIQUE(ApartmentID, EndDate),
         Price DECIMAL NOT NULL CHECK(Price > 0)
+        CONSTRAINT FkCustomer
+            FOREIGN KEY (CustomerID) 
+            REFERENCES Customer(CustomerID)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE,
+        CONSTRAINT FkApartment
+            FOREIGN KEY (ApartmentID) 
+            REFERENCES Apartment(ApartmentID)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE,
     );
     """
     create_review_table = """
     CREATE TABLE Review (
-        CustomerID INT NOT NULL CHECK(CustomerID > 0),
-        ApartmentID INT NOT NULL CHECK(ApartmentID > 0),
-        FOREIGN KEY (CustomerID) REFERENCES Customer(CID),
-        FOREIGN KEY (ApartmentID) REFERENCES Apartment(AID),
+        ReviewID  SERIAL PRIMARY KEY,
+        CustomerID INT NOT NULL,
+        ApartmentID INT NOT NULL,
         Rating INT NOT NULL CHECK(Rating >= 0 AND Rating <= 10),
         ReviewDate DATE NOT NULL,
         ReviewText TEXT
+        CONSTRAINT FkCustomer
+            FOREIGN KEY (CustomerID) 
+            REFERENCES Customer(CustomerID)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE,
+        CONSTRAINT FkApartment
+            FOREIGN KEY (ApartmentID) 
+            REFERENCES Apartment(ApartmentID)
+            ON DELETE CASCADE
+            ON UPDATE CASCADE,
     );
     """
     full_query = create_customer_table + create_owner_table + create_apt_table + create_reservation_table + create_review_table
