@@ -136,8 +136,13 @@ def add_owner(owner: Owner) -> ReturnValue:
     conn.close()
 
 def get_owner(owner_id: int) -> Owner: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    _, result_set = conn.execute("SELECT OID, Name FROM Owner WHERE OID = {owner_id}")
+    owner_object = Owner(result_set[0]['OID'], result_set[0]['Name'])
+    conn.commit()
+    conn.close()
+    return owner_object
+
 
 #Delete an owner from the database.
 def delete_owner(owner_id: int) -> ReturnValue: #Daniel
@@ -146,8 +151,19 @@ def delete_owner(owner_id: int) -> ReturnValue: #Daniel
 
 #Add an apartment to the database.
 def add_apartment(apartment: Apartment) -> ReturnValue: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    apartment_id = apartment.get_id()
+    apartment_address = apartment.get_address()
+    apartment_city = apartment.get_city()
+    apartment_country = apartment.get_country()
+    apartment_size = apartment.get_size()
+    add_apartment_query = f"""
+        INSERT INTO Apartment (AID, Address, City, Country, Size, OwnerID)
+        VALUES ({apartment_id}, '{apartment_address}', '{apartment_city}', '{apartment_country}', '{apartment_size}')
+        """
+    conn.execute(add_apartment_query)
+    conn.commit()
+    conn.close()
 
 #Get an apartment from the database.
 def get_apartment(apartment_id: int) -> Apartment: #Daniel
@@ -156,8 +172,11 @@ def get_apartment(apartment_id: int) -> Apartment: #Daniel
 
 #Delete an apartment from the database.
 def delete_apartment(apartment_id: int) -> ReturnValue: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    delete_apartment_query = f"""DELETE FROM Apartment WHERE AID = {apartment_id}"""
+    conn.execute(delete_apartment_query)
+    conn.commit()
+    conn.close()
 
 #Add a customer to the database.
 def add_customer(customer: Customer) -> ReturnValue: #Daniel
@@ -166,8 +185,13 @@ def add_customer(customer: Customer) -> ReturnValue: #Daniel
 
 #Get a customer from the database.
 def get_customer(customer_id: int) -> Customer: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    get_customer_query = f"""SELECT CID, Name FROM Customer WHERE CID = {customer_id}"""
+    _, result_set = conn.execute(get_customer_query)
+    customer_object = Customer(result_set[0]['CID'], result_set[0]['Name'])
+    conn.commit()
+    conn.close()
+    return customer_object
 
 #Delete a customer from the database.
 def delete_customer(customer_id: int) -> ReturnValue: #Daniel
@@ -176,8 +200,12 @@ def delete_customer(customer_id: int) -> ReturnValue: #Daniel
 
 #Customer made a reservation of apartment from start_date to end_date and paid total_price
 def customer_made_reservation(customer_id: int, apartment_id: int, start_date: date, end_date: date, total_price: float) -> ReturnValue: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    customer_made_reservation_query = f"""INSERT INTO Reservation (CustomerID, ApartmentID, StartDate, EndDate, Price) 
+                                       VALUES ({customer_id}, '{apartment_id}', '{start_date}', '{end_date}', '{total_price}')"""
+    conn.execute(customer_made_reservation_query)
+    conn.commit()
+    conn.close()
 
 #Remove a reservation from the database.
 def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_date: date) -> ReturnValue: #Daniel
