@@ -215,8 +215,18 @@ def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_da
 
 #Customer reviewed apartment on date review_date and gave it rating stars, with text review_text.
 def customer_reviewed_apartment(customer_id: int, apartment_id: int, review_date: date, rating: int, review_text: str) -> ReturnValue: #Doron
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    customer_reviewed_apartment_query = f"""
+                INSERT INTO Reviews(
+                    SELECT {customer_id}, {apartment_id}, {review_date}, {rating}, {review_text}
+                    WHERE EXISTS (
+                        SELECT * FROM Reservations 
+                        WHERE end_date < {review_date} AND customer_id = {customer_id} AND apartment_id = {apartment_id}                )
+                );
+            """
+    conn.execute(customer_reviewed_apartment_query)
+    conn.commit()
+    conn.close()
 
 #Customer decided to update their review of apartment on update_date and changed his rating to new_rating and the review text to new_text
 def customer_updated_review(customer_id: int, apartmetn_id: int, update_date: date, new_rating: int, new_text: str) -> ReturnValue: #Daniel
