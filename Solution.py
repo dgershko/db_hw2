@@ -82,6 +82,7 @@ def create_tables():
             REFERENCES Apartment(ApartmentID)
             ON DELETE CASCADE
             ON UPDATE CASCADE,
+        UNIQUE(CustomerID, ApartmentID)
     );
     """
     full_query = create_customer_table + create_owner_table + create_apt_table + create_reservation_table + create_review_table
