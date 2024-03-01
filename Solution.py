@@ -14,6 +14,7 @@ from Business.Apartment import Apartment
 
 # ---------------------------------- CRUD API: ----------------------------------
 
+
 def create_tables():
     conn = Connector.DBConnector()
     create_owner_table = """
@@ -38,10 +39,10 @@ def create_tables():
         Size INT NOT NULL CHECK(Size > 0)
     );
     """
-        # OwnerID INT,
-        # FOREIGN KEY (OwnerID) REFERENCES Owner(OwnerID)
-        #     ON DELETE CASCADE
-        #     ON UPDATE CASCADE
+    # OwnerID INT,
+    # FOREIGN KEY (OwnerID) REFERENCES Owner(OwnerID)
+    #     ON DELETE CASCADE
+    #     ON UPDATE CASCADE
     create_owns_table = """
     CREATE TABLE Owns (
         OwnerID INT NOT NULL REFERENCES Owner(OwnerID) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -93,12 +94,13 @@ def create_tables():
             ON UPDATE CASCADE
     );
     """
+    # ReviewID SERIAL PRIMARY KEY,
     create_review_table = """
     CREATE TABLE Review (
-        ReviewID  SERIAL PRIMARY KEY,
         CustomerID INT NOT NULL,
         ApartmentID INT NOT NULL,
-        Rating INT NOT NULL CHECK(Rating >= 0 AND Rating <= 10),
+        PRIMARY KEY (CustomerID, ApartmentID),
+        Rating INT NOT NULL CHECK(Rating >= 1 AND Rating <= 10),
         ReviewDate DATE NOT NULL,
         ReviewText TEXT,
         CONSTRAINT FkCustomer
@@ -110,11 +112,17 @@ def create_tables():
             FOREIGN KEY (ApartmentID) 
             REFERENCES Apartment(ApartmentID)
             ON DELETE CASCADE
-            ON UPDATE CASCADE,
-        UNIQUE(CustomerID, ApartmentID)
+            ON UPDATE CASCADE
     );
     """
-    full_query = create_customer_table + create_owner_table + create_apt_table + create_owns_table + create_reservation_table + create_review_table
+    full_query = (
+        create_customer_table
+        + create_owner_table
+        + create_apt_table
+        + create_owns_table
+        + create_reservation_table
+        + create_review_table
+    )
     conn.execute(full_query)
     conn.commit()
     conn.close()
@@ -135,6 +143,7 @@ def clear_tables():
     conn.commit()
     conn.close()
 
+
 def drop_tables():
     drop_tables_query = """
     DROP TABLE Owns CASCADE;
@@ -150,14 +159,16 @@ def drop_tables():
     conn.close()
 
 
-#Add an owner to the database
+# Add an owner to the database
 def add_owner(owner: Owner) -> ReturnValue:
     owner_id = owner.get_owner_id()
     owner_name = owner.get_owner_name()
-    add_owner_query = sql.SQL("""
+    add_owner_query = sql.SQL(
+        """
     INSERT INTO Owner (OwnerID, Name)
     VALUES ({}, {})
-    """).format(sql.Literal(owner_id), sql.Literal(owner_name))
+    """
+    ).format(sql.Literal(owner_id), sql.Literal(owner_name))
     conn = Connector.DBConnector()
     try:
         conn.execute(add_owner_query)
@@ -166,13 +177,16 @@ def add_owner(owner: Owner) -> ReturnValue:
         return handle_errors(e)
     conn.commit()
     conn.close()
-    return ReturnValue['OK']
+    return ReturnValue["OK"]
 
-def get_owner(owner_id: int) -> Owner: #Doron
+
+def get_owner(owner_id: int) -> Owner:  # Doron
     conn = Connector.DBConnector()
-    get_owner_query = sql.SQL("""
+    get_owner_query = sql.SQL(
+        """
     SELECT OwnerID, Name FROM Owner WHERE OwnerID = {}
-    """).format(sql.Literal(owner_id))
+    """
+    ).format(sql.Literal(owner_id))
     try:
         num_rows, result_set = conn.execute(get_owner_query)
     except exception_list as e:
@@ -181,17 +195,19 @@ def get_owner(owner_id: int) -> Owner: #Doron
     if num_rows < 1:
         conn.close()
         return Owner.bad_owner()
-    owner_object = Owner(result_set[0]['OwnerID'], result_set[0]['Name'])
+    owner_object = Owner(result_set[0]["OwnerID"], result_set[0]["Name"])
     conn.close()
     return owner_object
 
 
-#Delete an owner from the database.
-def delete_owner(owner_id: int) -> ReturnValue: #Daniel
+# Delete an owner from the database.
+def delete_owner(owner_id: int) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
-    delete_owner_query = sql.SQL("""
+    delete_owner_query = sql.SQL(
+        """
     DELETE FROM Owner WHERE OwnerID = {}
-    """).format(sql.Literal(owner_id))
+    """
+    ).format(sql.Literal(owner_id))
     try:
         affected_lines, _ = conn.execute(delete_owner_query)
         conn.commit()
@@ -200,21 +216,30 @@ def delete_owner(owner_id: int) -> ReturnValue: #Daniel
         return handle_errors(e)
     conn.close()
     if affected_lines < 1:
-        return ReturnValue['NOT_EXISTS']
-    return ReturnValue['OK']
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Add an apartment to the database.
-def add_apartment(apartment: Apartment) -> ReturnValue: #Doron
+
+# Add an apartment to the database.
+def add_apartment(apartment: Apartment) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
     apartment_id = apartment.get_id()
     apartment_address = apartment.get_address()
     apartment_city = apartment.get_city()
     apartment_country = apartment.get_country()
     apartment_size = apartment.get_size()
-    add_apartment_query = sql.SQL("""
+    add_apartment_query = sql.SQL(
+        """
     INSERT INTO Apartment (ApartmentID, Address, City, Country, Size)
     VALUES ({}, {}, {}, {}, {})
-    """).format(sql.Literal(apartment_id), sql.Literal(apartment_address), sql.Literal(apartment_city), sql.Literal(apartment_country), sql.Literal(apartment_size))
+    """
+    ).format(
+        sql.Literal(apartment_id),
+        sql.Literal(apartment_address),
+        sql.Literal(apartment_city),
+        sql.Literal(apartment_country),
+        sql.Literal(apartment_size),
+    )
     try:
         conn.execute(add_apartment_query)
     except exception_list as e:
@@ -222,14 +247,17 @@ def add_apartment(apartment: Apartment) -> ReturnValue: #Doron
         return handle_errors(e)
     conn.commit()
     conn.close()
-    return ReturnValue['OK']
+    return ReturnValue["OK"]
 
-#Get an apartment from the database.
-def get_apartment(apartment_id: int) -> Apartment: #Daniel
+
+# Get an apartment from the database.
+def get_apartment(apartment_id: int) -> Apartment:  # Daniel
     conn = Connector.DBConnector()
-    get_apt_query = sql.SQL("""
+    get_apt_query = sql.SQL(
+        """
     SELECT * FROM Apartment WHERE ApartmentID = {}
-    """).format(sql.Literal(apartment_id))
+    """
+    ).format(sql.Literal(apartment_id))
     try:
         num_rows, result_set = conn.execute(get_apt_query)
     except exception_list as e:
@@ -242,22 +270,25 @@ def get_apartment(apartment_id: int) -> Apartment: #Daniel
     apt_data = result_set[0]
     try:
         apt_object = Apartment(
-            id=apt_data['ApartmentID'],
-            address=apt_data['address'],
-            city=apt_data['city'],
-            country=apt_data['country'],
-            size=apt_data['size']
+            id=apt_data["ApartmentID"],
+            address=apt_data["address"],
+            city=apt_data["city"],
+            country=apt_data["country"],
+            size=apt_data["size"],
         )
     except KeyError:
         return Apartment.bad_apartment()
     return apt_object
 
-#Delete an apartment from the database.
-def delete_apartment(apartment_id: int) -> ReturnValue: #Doron
+
+# Delete an apartment from the database.
+def delete_apartment(apartment_id: int) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
-    delete_apartment_query = sql.SQL("""
+    delete_apartment_query = sql.SQL(
+        """
     DELETE FROM Apartment WHERE ApartmentID = {}
-    """).format(sql.Literal(apartment_id))
+    """
+    ).format(sql.Literal(apartment_id))
     try:
         rows_affected, _ = conn.execute(delete_apartment_query)
     except exception_list as e:
@@ -265,20 +296,23 @@ def delete_apartment(apartment_id: int) -> ReturnValue: #Doron
         return handle_errors(e)
     if rows_affected != 1:
         conn.close()
-        return ReturnValue['NOT_EXISTS']
+        return ReturnValue["NOT_EXISTS"]
     conn.commit()
     conn.close()
-    return ReturnValue['OK']
+    return ReturnValue["OK"]
 
-#Add a customer to the database.
-def add_customer(customer: Customer) -> ReturnValue: #Daniel
+
+# Add a customer to the database.
+def add_customer(customer: Customer) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
     customer_id = customer.get_customer_id()
     customer_name = customer.get_customer_name()
-    add_customer_query = sql.SQL("""
+    add_customer_query = sql.SQL(
+        """
     INSERT INTO Customer (CustomerID, Name)
     VALUES({}, {})
-    """).format(sql.Literal(customer_id), sql.Literal(customer_name))
+    """
+    ).format(sql.Literal(customer_id), sql.Literal(customer_name))
     try:
         conn.execute(add_customer_query)
         conn.commit()
@@ -286,30 +320,36 @@ def add_customer(customer: Customer) -> ReturnValue: #Daniel
         conn.close()
         return handle_errors(e)
     conn.close()
-    return ReturnValue['OK']
+    return ReturnValue["OK"]
 
-#Get a customer from the database.
-def get_customer(customer_id: int) -> Customer: #Doron
+
+# Get a customer from the database.
+def get_customer(customer_id: int) -> Customer:  # Doron
     conn = Connector.DBConnector()
-    get_customer_query = sql.SQL("""
+    get_customer_query = sql.SQL(
+        """
     SELECT CustomerID, Name FROM Customer WHERE CustomerID = {}
-    """).format(sql.Literal(customer_id))
+    """
+    ).format(sql.Literal(customer_id))
     rows, result_set = conn.execute(get_customer_query)
     conn.close()
     if rows < 1:
         return Customer.bad_customer()
     try:
-        customer_object = Customer(result_set[0]['CustomerID'], result_set[0]['Name'])
+        customer_object = Customer(result_set[0]["CustomerID"], result_set[0]["Name"])
     except KeyError:
         return Customer.bad_customer()
     return customer_object
 
-#Delete a customer from the database.
-def delete_customer(customer_id: int) -> ReturnValue: #Daniel
+
+# Delete a customer from the database.
+def delete_customer(customer_id: int) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
-    delete_customer_query = sql.SQL("""
+    delete_customer_query = sql.SQL(
+        """
     DELETE FROM Customer WHERE CustomerID = {}
-    """).format(sql.Literal(customer_id))
+    """
+    ).format(sql.Literal(customer_id))
     try:
         rows_affected, _ = conn.execute(delete_customer_query)
     except exception_list as e:
@@ -317,13 +357,21 @@ def delete_customer(customer_id: int) -> ReturnValue: #Daniel
         return handle_errors(e)
     conn.close()
     if rows_affected < 1:
-        return ReturnValue['NOT_EXISTS']
-    return ReturnValue['OK']
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Customer made a reservation of apartment from start_date to end_date and paid total_price
-def customer_made_reservation(customer_id: int, apartment_id: int, start_date: date, end_date: date, total_price: float) -> ReturnValue: #Doron
+
+# Customer made a reservation of apartment from start_date to end_date and paid total_price
+def customer_made_reservation(
+    customer_id: int,
+    apartment_id: int,
+    start_date: date,
+    end_date: date,
+    total_price: float,
+) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
-    customer_made_reservation_query = sql.SQL("""
+    customer_made_reservation_query = sql.SQL(
+        """
     INSERT INTO Reservation (CustomerID, ApartmentID, StartDate, EndDate, Price) 
     SELECT {}, {}, {}, {}, {}
     WHERE NOT EXISTS (
@@ -332,7 +380,17 @@ def customer_made_reservation(customer_id: int, apartment_id: int, start_date: d
         WHERE ApartmentID = {}
         AND (StartDate, EndDate) OVERLAPS ({}, {})
     )
-    """).format(sql.Literal(customer_id), sql.Literal(apartment_id), sql.Literal(start_date), sql.Literal(end_date), sql.Literal(total_price), sql.Literal(apartment_id), sql.Literal(start_date), sql.Literal(end_date))
+    """
+    ).format(
+        sql.Literal(customer_id),
+        sql.Literal(apartment_id),
+        sql.Literal(start_date),
+        sql.Literal(end_date),
+        sql.Literal(total_price),
+        sql.Literal(apartment_id),
+        sql.Literal(start_date),
+        sql.Literal(end_date),
+    )
     try:
         conn.execute(customer_made_reservation_query)
     except exception_list as e:
@@ -340,14 +398,21 @@ def customer_made_reservation(customer_id: int, apartment_id: int, start_date: d
         return handle_errors(e)
     conn.commit()
     conn.close()
-    return ReturnValue['OK']
+    return ReturnValue["OK"]
 
-#Remove a reservation from the database.
-def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_date: date) -> ReturnValue: #Daniel
+
+# Remove a reservation from the database.
+def customer_cancelled_reservation(
+    customer_id: int, apartment_id: int, start_date: date
+) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
-    customer_cancelled_reservation_query = f"""
-    DELETE FROM Reservation WHERE CustomerID = {customer_id} AND ApartmentID = {apartment_id} AND startdate = {start_date}
+    customer_cancelled_reservation_query = sql.SQL(
+        """
+    DELETE FROM Reservation WHERE CustomerID = {} AND ApartmentID = {} AND StartDate = {}
     """
+    ).format(
+        sql.Literal(customer_id), sql.Literal(apartment_id), sql.Literal(start_date)
+    )
     try:
         rows_affected, _ = conn.execute(customer_cancelled_reservation_query)
     except exception_list as e:
@@ -356,37 +421,75 @@ def customer_cancelled_reservation(customer_id: int, apartment_id: int, start_da
     conn.commit()
     conn.close()
     if rows_affected != 1:
-        return ReturnValue['NOT_EXISTS']
-    return ReturnValue['OK']
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Customer reviewed apartment on date review_date and gave it rating stars, with text review_text.
-def customer_reviewed_apartment(customer_id: int, apartment_id: int, review_date: date, rating: int, review_text: str) -> ReturnValue: #Doron
+
+# Customer reviewed apartment on date review_date and gave it rating stars, with text review_text.
+def customer_reviewed_apartment(
+    customer_id: int,
+    apartment_id: int,
+    review_date: date,
+    rating: int,
+    review_text: str,
+) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
-    customer_reviewed_apartment_query = f"""
-    INSERT INTO Reviews(
-        SELECT {customer_id}, {apartment_id}, {review_date}, {rating}, {review_text}
-        WHERE EXISTS (
-            SELECT * FROM Reservations 
-            WHERE end_date < {review_date} AND customer_id = {customer_id} AND apartment_id = {apartment_id})
+    customer_reviewed_apartment_query = sql.SQL(
+        """
+    Insert into Review (CustomerID, ApartmentID, ReviewDate, Rating, ReviewText)
+    SELECT {}, {}, {}, {}, {}
+    WHERE EXISTS (
+        SELECT * FROM Reservation
+        WHERE CustomerID = {}
+        AND ApartmentID = {}
+        AND (EndDate < {})
     );
     """
+    ).format(
+        sql.Literal(customer_id),
+        sql.Literal(apartment_id),
+        sql.Literal(review_date),
+        sql.Literal(rating),
+        sql.Literal(review_text),
+        sql.Literal(customer_id),
+        sql.Literal(apartment_id),
+        sql.Literal(review_date),
+    )
     try:
-        conn.execute(customer_reviewed_apartment_query)
+        rows_affected, _ = conn.execute(customer_reviewed_apartment_query)
     except exception_list as e:
+        print(f"\t\t{e.__str__()}")
         conn.close()
         return handle_errors(e)
     conn.commit()
     conn.close()
-    return ReturnValue['OK']
+    if rows_affected < 1:
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Customer decided to update their review of apartment on update_date and changed his rating to new_rating and the review text to new_text
-def customer_updated_review(customer_id: int, apartment_id: int, update_date: date, new_rating: int, new_text: str) -> ReturnValue: #Daniel
+
+# Customer decided to update their review of apartment on update_date and changed his rating to new_rating and the review text to new_text
+def customer_updated_review(
+    customer_id: int,
+    apartment_id: int,
+    update_date: date,
+    new_rating: int,
+    new_text: str,
+) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
-    customer_updated_review_query = f"""
+    customer_updated_review_query = sql.SQL(
+        """
     UPDATE Review 
-    SET reviewdate = {update_date}, rating = {new_rating}, reviewtext = {new_text}
-    WHERE CustomerID = {customer_id} AND ApartmentID = {apartment_id}
+    SET reviewdate = {}, rating = {}, reviewtext = {}
+    WHERE CustomerID = {} AND ApartmentID = {}
     """
+    ).format(
+        sql.Literal(update_date),
+        sql.Literal(new_rating),
+        sql.Literal(new_text),
+        sql.Literal(customer_id),
+        sql.Literal(apartment_id),
+    )
     try:
         rows_affected, _ = conn.execute(customer_updated_review_query)
     except exception_list as e:
@@ -395,21 +498,52 @@ def customer_updated_review(customer_id: int, apartment_id: int, update_date: da
     conn.commit()
     conn.close()
     if rows_affected != 1:
-        return ReturnValue['NOT_EXISTS']
-    return ReturnValue['OK']
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Owner owns apartment. An apartment can be owned by at most one owner.
-def owner_owns_apartment(owner_id: int, apartment_id: int) -> ReturnValue: #Doron
-    # TODO: implement
-    pass
 
-#Owner dropped apartment and does not own it anymore.
-def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue: #Daniel
+# Owner owns apartment. An apartment can be owned by at most one owner.
+def owner_owns_apartment(owner_id: int, apartment_id: int) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
-    owner_drops_apartment_query = f"""
-    DELETE FROM Owns
-    WHERE OwnerID = {owner_id} AND ApartmentID = {apartment_id}
+    owner_owns_apartment_query = sql.SQL(
+        """
+    INSERT INTO Owns (
+        SELECT {}, {}
+        WHERE EXISTS (
+            SELECT * FROM Apartment
+            WHERE ApartmentID = {}
+        )
+        AND EXISTS (
+            SELECT * FROM Owner
+            WHERE OwnerID = {}
+        )
+    );
     """
+    ).format(
+        sql.Literal(owner_id),
+        sql.Literal(apartment_id),
+        sql.Literal(apartment_id),
+        sql.Literal(owner_id),
+    )
+    try:
+        conn.execute(owner_owns_apartment_query)
+    except exception_list as e:
+        conn.close()
+        return handle_errors(e)
+    conn.commit()
+    conn.close()
+    return ReturnValue["OK"]
+
+
+# Owner dropped apartment and does not own it anymore.
+def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue:  # Daniel
+    conn = Connector.DBConnector()
+    owner_drops_apartment_query = sql.SQL(
+        """
+    DELETE FROM Owns
+    WHERE OwnerID = {} AND ApartmentID = {}
+    """
+    ).format(sql.Literal(owner_id), sql.Literal(apartment_id))
     try:
         rows_affected, _ = conn.execute(owner_drops_apartment_query)
     except exception_list as e:
@@ -418,16 +552,18 @@ def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue: #Dan
     conn.commit()
     conn.close()
     if rows_affected != 1:
-        return ReturnValue['NOT_EXISTS']
-    return ReturnValue['OK']
+        return ReturnValue["NOT_EXISTS"]
+    return ReturnValue["OK"]
 
-#Get the owner of apartment.
-def get_apartment_owner(apartment_id: int) -> Owner: #Doron
+
+# Get the owner of apartment.
+def get_apartment_owner(apartment_id: int) -> Owner:  # Doron
     # TODO: implement
     pass
 
-#Get a list of all apartments owned by owner.
-def get_owner_apartments(owner_id: int) -> List[Apartment]: #Daniel
+
+# Get a list of all apartments owned by owner.
+def get_owner_apartments(owner_id: int) -> List[Apartment]:  # Daniel
     conn = Connector.DBConnector()
     get_owner_apartments_query = f"""
     SELECT a.*
@@ -448,11 +584,11 @@ def get_owner_apartments(owner_id: int) -> List[Apartment]: #Daniel
     for apt_data in apts_data:
         try:
             apt_object = Apartment(
-                id=apt_data['ApartmentID'],
-                address=apt_data['address'],
-                city=apt_data['city'],
-                country=apt_data['country'],
-                size=apt_data['size']
+                id=apt_data["ApartmentID"],
+                address=apt_data["address"],
+                city=apt_data["city"],
+                country=apt_data["country"],
+                size=apt_data["size"],
             )
             apts.append(apt_object)
         except KeyError:
@@ -462,22 +598,26 @@ def get_owner_apartments(owner_id: int) -> List[Apartment]: #Daniel
 
 # ---------------------------------- BASIC API: ----------------------------------
 
-#Get the average rating across all reviews of apartment.
+
+# Get the average rating across all reviews of apartment.
 def get_apartment_rating(apartment_id: int) -> float:
     # TODO: implement
     pass
 
-#Get the average of averages of ratings from all reviews of apartments owned by owner.
+
+# Get the average of averages of ratings from all reviews of apartments owned by owner.
 def get_owner_rating(owner_id: int) -> float:
     # TODO: implement
     pass
 
-#Get the customer that made the most reservations.
+
+# Get the customer that made the most reservations.
 def get_top_customer() -> Customer:
     # TODO: implement
     pass
 
-#Output: a list of tuples of (owner_name, total_reservation_count) of all owners in the database.
+
+# Output: a list of tuples of (owner_name, total_reservation_count) of all owners in the database.
 def reservations_per_owner() -> List[Tuple[str, int]]:
     # TODO: implement
     pass
@@ -485,12 +625,14 @@ def reservations_per_owner() -> List[Tuple[str, int]]:
 
 # ---------------------------------- ADVANCED API: ----------------------------------
 
-#Return all owners that own an apartment in every city there are apartments in.
+
+# Return all owners that own an apartment in every city there are apartments in.
 def get_all_location_owners() -> List[Owner]:
     # TODO: implement
     pass
 
-#Get the apartment that has the best reviews compared to its average nightly price.
+
+# Get the apartment that has the best reviews compared to its average nightly price.
 def best_value_for_money() -> Apartment:
     # TODO: implement
     pass
@@ -499,6 +641,7 @@ def best_value_for_money() -> Apartment:
 def profit_per_month(year: int) -> List[Tuple[int, float]]:
     # TODO: implement
     pass
+
 
 """ In this query you will need to approximate what the given customer will rate an apartment they haven’t been in, based on their and other users’ reviews.
 You will use the following method for the approximation:
@@ -509,9 +652,12 @@ Then, for every customer you calculated a ratio for, the approximated ratio for 
 they reviewed would be the ratio multiplied by the rating they gave the other apartment. If
 you get multiple approximations for the same apartment, return their average.
 Generate an approximation for all apartments where it is possible. """
+
+
 def get_apartment_recommendation(customer_id: int) -> List[Tuple[Apartment, float]]:
     # TODO: implement
     pass
+
 
 """
 class ConnectionInvalid(_Exceptions):
@@ -532,38 +678,41 @@ class ReturnValue(Enum):
 """
 # Utility functions:
 
-def create_owner_from_response(res: ResultSetDict) -> Owner:
-    ...
 
-def create_customer_from_response(res: ResultSetDict) -> Customer:
-    ...
+def create_owner_from_response(res: ResultSetDict) -> Owner: ...
 
-def create_apartment_from_response(res: ResultSetDict) -> Apartment:
-    ...
+
+def create_customer_from_response(res: ResultSetDict) -> Customer: ...
+
+
+def create_apartment_from_response(res: ResultSetDict) -> Apartment: ...
+
 
 def handle_errors(e: DatabaseException):
-    e_name  = e.__str__()
+    e_name = e.__str__()
     # print(f"handling error: {e_name}")
-    if e_name == 'UNIQUE_VIOLATION':
-        return ReturnValue['ALREADY_EXISTS']
-    elif e_name == 'NOT_NULL_VIOLATION':
-        return ReturnValue['BAD_PARAMS']
-    elif e_name == 'FOREIGN_KEY_VIOLATION':
-        return ReturnValue['BAD_PARAMS']
-    elif e_name == 'CHECK_VIOLATION':
-        return ReturnValue['BAD_PARAMS']
-    elif e_name == 'database_ini_ERROR':
-        return ReturnValue['ERROR']
-    elif e_name == 'UNKNOWN_ERROR':
-        return ReturnValue['ERROR']
-    elif e_name == 'ConnectionInvalid':
-        return ReturnValue['ERROR']
+    if e_name == "UNIQUE_VIOLATION":
+        return ReturnValue["ALREADY_EXISTS"]
+    elif e_name == "NOT_NULL_VIOLATION":
+        return ReturnValue["BAD_PARAMS"]
+    elif e_name == "FOREIGN_KEY_VIOLATION":
+        return ReturnValue["BAD_PARAMS"]
+    elif e_name == "CHECK_VIOLATION":
+        return ReturnValue["BAD_PARAMS"]
+    elif e_name == "database_ini_ERROR":
+        return ReturnValue["ERROR"]
+    elif e_name == "UNKNOWN_ERROR":
+        return ReturnValue["ERROR"]
+    elif e_name == "ConnectionInvalid":
+        return ReturnValue["ERROR"]
 
-exception_list = (DatabaseException.ConnectionInvalid,
-                  DatabaseException.NOT_NULL_VIOLATION,
-                  DatabaseException.FOREIGN_KEY_VIOLATION,
-                  DatabaseException.UNIQUE_VIOLATION,
-                  DatabaseException.CHECK_VIOLATION,
-                  DatabaseException.database_ini_ERROR,
-                  DatabaseException.UNKNOWN_ERROR
-                  )
+
+exception_list = (
+    DatabaseException.ConnectionInvalid,
+    DatabaseException.NOT_NULL_VIOLATION,
+    DatabaseException.FOREIGN_KEY_VIOLATION,
+    DatabaseException.UNIQUE_VIOLATION,
+    DatabaseException.CHECK_VIOLATION,
+    DatabaseException.database_ini_ERROR,
+    DatabaseException.UNKNOWN_ERROR,
+)
