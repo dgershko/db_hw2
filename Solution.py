@@ -120,13 +120,13 @@ def create_tables():
     GROUP BY ApartmentID;
     """
     full_query = (
-        create_customer_table
-        + create_owner_table
-        + create_apt_table
-        + create_owns_table
-        + create_reservation_table
-        + create_review_table
-        + apt_avg_rating_view
+            create_customer_table
+            + create_owner_table
+            + create_apt_table
+            + create_owns_table
+            + create_reservation_table
+            + create_review_table
+            + apt_avg_rating_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -194,7 +194,7 @@ def get_owner(owner_id: int) -> Owner:  # Doron
     ).format(sql.Literal(owner_id))
     try:
         num_rows, result_set = conn.execute(get_owner_query)
-    except exception_list as e:
+    except exception_list:
         conn.close()
         return Owner.bad_owner()
     if num_rows < 1:
@@ -208,7 +208,7 @@ def get_owner(owner_id: int) -> Owner:  # Doron
 def delete_owner(owner_id: int) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
     delete_owner_query = sql.SQL(
-    """
+        """
     DELETE FROM Owner WHERE OwnerID = {}
     """
     ).format(sql.Literal(owner_id))
@@ -279,7 +279,7 @@ def get_apartment(apartment_id: int) -> Apartment:  # Daniel
 def delete_apartment(apartment_id: int) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
     delete_apartment_query = sql.SQL(
-    """
+        """
     DELETE FROM Apartment WHERE ApartmentID = {}
     """
     ).format(sql.Literal(apartment_id))
@@ -353,49 +353,49 @@ def delete_customer(customer_id: int) -> ReturnValue:  # Daniel
 
 # Customer made a reservation of apartment from start_date to end_date and paid total_price
 def customer_made_reservation(
-    customer_id: int,
-    apartment_id: int,
-    start_date: date,
-    end_date: date,
-    total_price: float,
+        customer_id: int,
+        apartment_id: int,
+        start_date: date,
+        end_date: date,
+        total_price: float,
 ) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
-    customer_made_reservation_query = sql.SQL(
-        """
-    INSERT INTO Reservation (CustomerID, ApartmentID, StartDate, EndDate, Price) 
-    SELECT {}, {}, {}, {}, {}
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM Reservation
-        WHERE ApartmentID = {}
-        AND (StartDate, EndDate) OVERLAPS ({}, {})
-    )
-    """
-    ).format(
-        sql.Literal(customer_id),
-        sql.Literal(apartment_id),
-        sql.Literal(start_date),
-        sql.Literal(end_date),
-        sql.Literal(total_price),
-        sql.Literal(apartment_id),
-        sql.Literal(start_date),
-        sql.Literal(end_date),
-    )
+    customer_made_reservation_query = sql.SQL("""
+                            INSERT INTO Reservations(CustomerID, ApartmentID, StartDate, EndDate, Price) 
+                                VALUES({customer_id_t}, {apartment_id_t}, {start_date_t}, {end_date_t}, {total_price_t})
+                                WHERE NOT EXISTS (
+                                    SELECT * FROM Reservations 
+                                    WHERE apartment_id = {apartment_id_t} 
+                                    AND (
+                                        {start_date_t} BETWEEN start_date AND end_date OR
+                                        {end_date_t} BETWEEN start_date AND end_date OR
+                                        start_date BETWEEN {start_date_t} AND {end_date_t} OR
+                                        end_date BETWEEN {start_date_t} AND {end_date_t}
+                                    )
+                                );
+                                """).format(customer_id_t=sql.Literal(customer_id),
+                                            apartment_id_t=sql.Literal(apartment_id),
+                                            start_date_t=sql.Literal(start_date),
+                                            end_date_t=sql.Literal(end_date),
+                                            total_price_t=sql.Literal(total_price)
+                                            )
+
     try:
         rows_affected, _ = conn.execute(customer_made_reservation_query)
+        if rows_affected == 0:
+            conn.close()
+            return ReturnValue.BAD_PARAMS
     except exception_list as e:
         conn.close()
         return handle_errors(e)
     conn.commit()
     conn.close()
-    if rows_affected < 1:
-        return ReturnValue["BAD_PARAMS"]
     return ReturnValue["OK"]
 
 
 # Remove a reservation from the database.
 def customer_cancelled_reservation(
-    customer_id: int, apartment_id: int, start_date: date
+        customer_id: int, apartment_id: int, start_date: date
 ) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
     customer_cancelled_reservation_query = sql.SQL(
@@ -419,15 +419,15 @@ def customer_cancelled_reservation(
 
 # Customer reviewed apartment on date review_date and gave it rating stars, with text review_text.
 def customer_reviewed_apartment(
-    customer_id: int,
-    apartment_id: int,
-    review_date: date,
-    rating: int,
-    review_text: str,
+        customer_id: int,
+        apartment_id: int,
+        review_date: date,
+        rating: int,
+        review_text: str,
 ) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
     customer_reviewed_apartment_query = sql.SQL(
-    """
+        """
     Insert into Review (CustomerID, ApartmentID, ReviewDate, Rating, ReviewText)
     SELECT {}, {}, {}, {}, {}
     WHERE EXISTS (
@@ -461,15 +461,15 @@ def customer_reviewed_apartment(
 
 # Customer decided to update their review of apartment on update_date and changed his rating to new_rating and the review text to new_text
 def customer_updated_review(
-    customer_id: int,
-    apartment_id: int,
-    update_date: date,
-    new_rating: int,
-    new_text: str,
+        customer_id: int,
+        apartment_id: int,
+        update_date: date,
+        new_rating: int,
+        new_text: str,
 ) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
     customer_updated_review_query = sql.SQL(
-    """
+        """
     UPDATE Review 
     SET reviewdate = {}, rating = {}, reviewtext = {}
     WHERE CustomerID = {} AND ApartmentID = {} AND {} > (
@@ -595,7 +595,7 @@ def get_owner_apartments(owner_id: int) -> List[Apartment]:  # Daniel
 def get_apartment_rating(apartment_id: int) -> float:
     conn = Connector.DBConnector()
     get_apartment_rating_query = sql.SQL(
-    """
+        """
     SELECT AvgRating FROM Ratings WHERE ApartmentID = {}
     """).format(sql.Literal(apartment_id))
     try:
@@ -662,6 +662,7 @@ def get_apartment_recommendation(customer_id: int) -> List[Tuple[Apartment, floa
     # TODO: implement
     pass
 
+
 # Utility functions:
 
 def create_owner_from_response(res: ResultSetDict) -> Owner:
@@ -670,11 +671,13 @@ def create_owner_from_response(res: ResultSetDict) -> Owner:
     except KeyError:
         return Owner.bad_owner()
 
+
 def create_customer_from_response(res: ResultSetDict) -> Customer:
     try:
         return Customer(res["CustomerID"], res["Name"])
     except KeyError:
         return Customer.bad_customer()
+
 
 def create_apartment_from_response(res: ResultSetDict) -> Apartment:
     try:
@@ -694,17 +697,9 @@ def handle_errors(e: DatabaseException):
     # print(f"handling error: {e_name}")
     if e_name == "UNIQUE_VIOLATION":
         return ReturnValue["ALREADY_EXISTS"]
-    elif e_name == "NOT_NULL_VIOLATION":
+    elif (e_name == "NOT_NULL_VIOLATION" or e_name == "FOREIGN_KEY_VIOLATION" or e_name == "CHECK_VIOLATION"):
         return ReturnValue["BAD_PARAMS"]
-    elif e_name == "FOREIGN_KEY_VIOLATION":
-        return ReturnValue["BAD_PARAMS"]
-    elif e_name == "CHECK_VIOLATION":
-        return ReturnValue["BAD_PARAMS"]
-    elif e_name == "database_ini_ERROR":
-        return ReturnValue["ERROR"]
-    elif e_name == "UNKNOWN_ERROR":
-        return ReturnValue["ERROR"]
-    elif e_name == "ConnectionInvalid":
+    elif (e_name == "database_ini_ERROR" or e_name == "UNKNOWN_ERROR" or e_name == "ConnectionInvalid"):
         return ReturnValue["ERROR"]
 
 
