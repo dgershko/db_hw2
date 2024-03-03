@@ -248,6 +248,7 @@ class Test(AbstractTest):
         self.assertEqual(ReturnValue.OK, Solution.add_customer(c2), 'add customer')
         c3 = Customer(3, 'three')
         self.assertEqual(ReturnValue.OK, Solution.add_customer(c3), 'add customer')
+
         apt1 = Apartment(1, 'test_addr', 'test_city', 'test_country', 5)
         self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt1), 'add apartment')
 
@@ -266,8 +267,46 @@ class Test(AbstractTest):
         review3 = {'customer_id': 3, 'apartment_id': 1, 'review_date': date(2016, 3, 3), 'rating': 3, 'review_text': 'good'}
         self.assertEqual(ReturnValue.OK, Solution.customer_reviewed_apartment(**review3), 'add review')
 
+        self.assertEqual(ReturnValue.OK, Solution.owner_owns_apartment(1, 1), 'add ownership')
+
         self.assertEqual(4, Solution.get_apartment_rating(1), 'get apartment rating')
         self.assertEqual(4, Solution.get_apartment_rating(1), 'get apartment rating')
+    
+    def test_get_owner_rating(self) -> None:
+        o1 = Owner(1, 'a1')
+        self.assertEqual(ReturnValue.OK, Solution.add_owner(o1), 'regular owner add')
+
+        c1 = Customer(1, 'one')
+        self.assertEqual(ReturnValue.OK, Solution.add_customer(c1), 'add customer')
+        c2 = Customer(2, 'two')
+        self.assertEqual(ReturnValue.OK, Solution.add_customer(c2), 'add customer')
+
+        apt1 = Apartment(1, 'test_addr_1', 'test_city', 'test_country', 5)
+        self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt1), 'add apartment')
+        apt2 = Apartment(2, 'test_addr_2', 'test_city', 'test_country', 5)
+        self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt2), 'add apartment')
+        apt3 = Apartment(3, 'test_addr_3', 'test_city', 'test_country', 5)
+        self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt3), 'add apartment')
+
+        res1 = {'customer_id': 1, 'apartment_id': 1, 'start_date': date(2013, 1, 1), 'end_date': date(2013, 2, 2), 'total_price': 50}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res1), 'add reservation')
+
+        res2 = {'customer_id': 1, 'apartment_id': 2, 'start_date': date(2014, 1, 1), 'end_date': date(2014, 2, 2), 'total_price': 50}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res2), 'add reservation')
+
+        res3 = {'customer_id': 2, 'apartment_id': 3, 'start_date': date(2015, 1, 1), 'end_date': date(2015, 2, 2), 'total_price': 50}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res3), 'add reservation')
+
+        review1 = {'customer_id': 1, 'apartment_id': 1, 'review_date': date(2015, 3, 3), 'rating': 5, 'review_text': 'good'}
+        self.assertEqual(ReturnValue.OK, Solution.customer_reviewed_apartment(**review1), 'add review') 
+        review2 = {'customer_id': 1, 'apartment_id': 2, 'review_date': date(2015, 3, 3), 'rating': 4, 'review_text': 'good'}
+        self.assertEqual(ReturnValue.OK, Solution.customer_reviewed_apartment(**review2), 'add review')
+        review3 = {'customer_id': 2, 'apartment_id': 3, 'review_date': date(2016, 3, 3), 'rating': 3, 'review_text': 'good'}
+        self.assertEqual(ReturnValue.OK, Solution.customer_reviewed_apartment(**review3), 'add review')
+
+        self.assertEqual(4, Solution.get_owner_rating(1), 'get owner rating')
+
+
 
 # *** DO NOT RUN EACH TEST MANUALLY ***
 if __name__ == '__main__':
