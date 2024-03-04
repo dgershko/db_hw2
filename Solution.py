@@ -153,6 +153,7 @@ def create_tables():
         + apt_avg_rating_view
         + owner_apts_view
         + owner_rating_view
+        + customer_reservation_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -722,6 +723,8 @@ def create_apartment_from_response(res: ResultSetDict) -> Apartment:
 def handle_errors(e: DatabaseException):
     e_name = e.__str__()
     # print(f"handling error: {e_name}")
+    if e_name == "FOREIGN_KEY_VIOLATION":
+        return ReturnValue["NOT_EXISTS"]
     if e_name == "UNIQUE_VIOLATION":
         return ReturnValue["ALREADY_EXISTS"]
     elif (
