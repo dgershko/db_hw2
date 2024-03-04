@@ -626,6 +626,7 @@ def get_apartment_rating(apartment_id: int) -> float:
 
 # Get the average of averages of ratings from all reviews of apartments owned by owner.
 def get_owner_rating(owner_id: int) -> float:
+    conn = Connector.DBConnector()
     get_owner_rating_query = sql.SQL(
     """
     SELECT AvgRating FROM OwnerRating WHERE OwnerID = {owner_id}
@@ -634,6 +635,7 @@ def get_owner_rating(owner_id: int) -> float:
     try:
         rows, result = conn.execute(get_owner_rating_query)
     except exception_list as e:
+        conn.rollback()
         conn.close()
         return handle_errors(e)
     conn.close()
