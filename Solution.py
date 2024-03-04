@@ -134,7 +134,7 @@ def create_tables():
     CREATE OR REPLACE VIEW CustomerReservations AS
     SELECT CustomerID, COUNT(*) as Reservations
     FROM Reservation
-    GROUPBY CustomerID
+    GROUP BY CustomerID
     """
     owner_reservation_view = """
     CREATE OR REPLACE VIEW OwnerReservation AS
