@@ -644,8 +644,27 @@ def get_owner_rating(owner_id: int) -> float:
 
 # Get the customer that made the most reservations.
 def get_top_customer() -> Customer:
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    try:
+        query = sql.SQL("""
+            SELECT c.CustomerID, c.Name
+            FROM Customer c
+            JOIN (
+                SELECT CustomerID, Reservations
+                FROM CustomerReservations
+                ORDER BY Reservations DESC, CustomerID ASC
+                LIMIT 1
+            ) rc ON c.CustomerID = rc.CustomerID;
+        """)
+        rows, result = conn.execute(query)
+    except Exception as e:
+        conn.close()
+        return Customer.bad_customer()
+    if rows < 1:
+        conn.close()
+        return Customer.bad_customer()
+    conn.close()
+    return Customer(customer_id= result.rows[0][0], customer_name= result.rows[0][1])
 
 
 # Output: a list of tuples of (owner_name, total_reservation_count) of all owners in the database.
