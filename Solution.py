@@ -18,19 +18,19 @@ from Business.Apartment import Apartment
 def create_tables():
     conn = Connector.DBConnector()
     create_owner_table = """
-    CREATE TABLE Owner (
+    CREATE TABLE IF NOT EXISTS Owner (
         OwnerID INT PRIMARY KEY CHECK(OwnerID > 0),
         Name VARCHAR(50) NOT NULL
     );
     """
     create_customer_table = """
-    CREATE TABLE Customer (
+    CREATE TABLE IF NOT EXISTS Customer (
         CustomerID INT PRIMARY KEY CHECK(CustomerID > 0),
         Name VARCHAR(50) NOT NULL
     );
     """
     create_apt_table = """
-    CREATE TABLE Apartment (
+    CREATE TABLE IF NOT EXISTS Apartment (
         ApartmentID INT PRIMARY KEY CHECK(ApartmentID > 0),
         Address VARCHAR(150) NOT NULL,
         City VARCHAR(50) NOT NULL,
@@ -39,19 +39,15 @@ def create_tables():
         Size INT NOT NULL CHECK(Size > 0)
     );
     """
-    # OwnerID INT,
-    # FOREIGN KEY (OwnerID) REFERENCES Owner(OwnerID)
-    #     ON DELETE CASCADE
-    #     ON UPDATE CASCADE
     create_owns_table = """
-    CREATE TABLE Owns (
+    CREATE TABLE IF NOT EXISTS Owns (
         OwnerID INT NOT NULL REFERENCES Owner(OwnerID) ON DELETE CASCADE ON UPDATE CASCADE,
         ApartmentID INT NOT NULL REFERENCES Apartment(ApartmentID) ON DELETE CASCADE ON UPDATE CASCADE,
         PRIMARY KEY (OwnerID, ApartmentID)
     );
     """
     create_reservation_table = """
-    CREATE TABLE Reservation (
+    CREATE TABLE IF NOT EXISTS Reservation (
         ReservationID SERIAL PRIMARY KEY,
         CustomerID INT NOT NULL,
         ApartmentID INT NOT NULL,
@@ -72,7 +68,7 @@ def create_tables():
     );
     """
     """
-    CREATE TABLE Reservation (
+    CREATE TABLE IF NOT EXISTS Reservation (
         ReservationID SERIAL PRIMARY KEY,
         CustomerID INT NOT NULL,
         ApartmentID INT NOT NULL,
@@ -94,7 +90,7 @@ def create_tables():
     """
     # ReviewID SERIAL PRIMARY KEY,
     create_review_table = """
-    CREATE TABLE Review (
+    CREATE TABLE IF NOT EXISTS Review (
         CustomerID INT NOT NULL,
         ApartmentID INT NOT NULL,
         PRIMARY KEY (CustomerID, ApartmentID),
@@ -114,13 +110,13 @@ def create_tables():
     );
     """
     apt_avg_rating_view = """
-    CREATE VIEW Ratings AS
+    CREATE OR REPLACE VIEW Ratings AS
     SELECT ApartmentID, AVG(Rating) as AvgRating
     FROM Review
     GROUP BY ApartmentID;
     """
     owner_apts_view = """
-    CREATE VIEW OwnerApartments AS
+    CREATE OR REPLACE VIEW OwnerApartments AS
     SELECT o.OwnerID ,a.*
     FROM Owner o
     JOIN Owns os ON o.OwnerID = os.OwnerID
@@ -128,20 +124,20 @@ def create_tables():
     """
     # owner rating view provides a view of the average rating of each owner, using the OwnerApartments view and the Ratings view
     owner_rating_view = """
-    CREATE VIEW OwnerRating AS
+    CREATE OR REPLACE VIEW OwnerRating AS
     SELECT oa.OwnerID as OwnerID, AVG(r.AvgRating) as AvgRating
     FROM OwnerApartments oa 
     JOIN Ratings r ON oa.ApartmentID = r.ApartmentID
     GROUP BY oa.OwnerID;
     """
     customer_reservation_view = """
-    CREATE VIEW CustomerReservations AS
+    CREATE OR REPLACE VIEW CustomerReservations AS
     SELECT CustomerID, COUNT(*) as Reservations
     FROM Reservation
     GROUPBY CustomerID
     """
     owner_reservation_view = """
-    CREATE VIEW OwnerReservation AS
+    CREATE OR REPLACE VIEW OwnerReservation AS
     SELECT oa.OwnerID, COUNT(rs.ReservationID) as ReservationCount
     FROM OwnerApartments oa
     JOIN Reservation rs ON rs.ApartmentID = oa.ApartmentID
