@@ -352,7 +352,6 @@ class Test(AbstractTest):
         self.assertEqual(4, Solution.get_owner_rating(1), 'get owner rating')
 
     def test_get_top_customer(self) -> None:
-        # Setup test data
         c1 = Customer(1, 'Customer1')
         self.assertEqual(ReturnValue.OK, Solution.add_customer(c1), 'add customer 1')
         c2 = Customer(2, 'Customer2')
@@ -365,7 +364,6 @@ class Test(AbstractTest):
         apt2 = Apartment(2, 'Address2', 'City', 'Country', 5)
         self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt2), 'add apartment 2')
 
-        # Customer 1 makes two reservations
         res1 = {'customer_id': 1, 'apartment_id': 1, 'start_date': date(2023, 1, 1), 'end_date': date(2023, 1, 10),
                 'total_price': 100}
         self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res1), 'Customer 1 reservation 1')
@@ -373,15 +371,47 @@ class Test(AbstractTest):
                 'total_price': 200}
         self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res2), 'Customer 1 reservation 2')
 
-        # Customer 2 makes one reservation
         res3 = {'customer_id': 2, 'apartment_id': 1, 'start_date': date(2023, 3, 1), 'end_date': date(2023, 3, 10),
                 'total_price': 150}
         self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res3), 'Customer 2 reservation')
 
-        # Customer 3 makes no reservations
-
         self.assertEqual(c1.get_customer_id(), Solution.get_top_customer().get_customer_id(),
                          'Verify top customer based on number of reservations')
+
+    def test_reservations_per_owner(self) -> None:
+        owner1 = Owner(1, 'Owner One')
+        self.assertEqual(ReturnValue.OK, Solution.add_owner(owner1), 'Add owner 1')
+        owner2 = Owner(2, 'Owner Two')
+        self.assertEqual(ReturnValue.OK, Solution.add_owner(owner2), 'Add owner 2')
+
+        apt1 = Apartment(1, '123 Street', 'City', 'Country', 100)
+        self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt1), 'Add apartment 1')
+        self.assertEqual(ReturnValue.OK, Solution.owner_owns_apartment(1, 1), 'Owner 1 owns apartment 1')
+
+        apt2 = Apartment(2, '456 Avenue', 'City', 'Country', 200)
+        self.assertEqual(ReturnValue.OK, Solution.add_apartment(apt2), 'Add apartment 2')
+        self.assertEqual(ReturnValue.OK, Solution.owner_owns_apartment(2, 2), 'Owner 2 owns apartment 2')
+
+        customer1 = Customer(1, 'Customer One')
+        self.assertEqual(ReturnValue.OK, Solution.add_customer(customer1), 'Add customer 1')
+
+        customer2 = Customer(2, 'Customer Two')
+        self.assertEqual(ReturnValue.OK, Solution.add_customer(customer2), 'Add customer 2')
+
+        res1 = {'customer_id': 1, 'apartment_id': 1, 'start_date': date(2023, 1, 1), 'end_date': date(2023, 1, 10), 'total_price': 1000}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res1), 'Customer 1 makes reservation for Apartment 1')
+
+        res2 = {'customer_id': 2, 'apartment_id': 2, 'start_date': date(2023, 2, 1), 'end_date': date(2023, 2, 10), 'total_price': 2000}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res2), 'Customer 2 makes reservation for Apartment 2')
+
+        res3 = {'customer_id': 2, 'apartment_id': 2, 'start_date': date(2024, 2, 1), 'end_date': date(2024, 2, 10),
+                'total_price': 2000}
+        self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res3),
+                         'Customer 2 makes reservation for Apartment 2')
+        expected_results = [(1, 1), (2, 2)] # Assuming each owner has one reservation
+        actual_results = Solution.reservations_per_owner()
+
+        self.assertListEqual(sorted(expected_results), sorted(actual_results), 'Verify reservation counts per owner')
 
 
 # *** DO NOT RUN EACH TEST MANUALLY ***

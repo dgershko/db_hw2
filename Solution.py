@@ -134,7 +134,7 @@ def create_tables():
     CREATE OR REPLACE VIEW CustomerReservations AS
     SELECT CustomerID, COUNT(*) as Reservations
     FROM Reservation
-    GROUP BY CustomerID
+    GROUP BY CustomerID;
     """
     owner_reservation_view = """
     CREATE OR REPLACE VIEW OwnerReservation AS
@@ -154,6 +154,7 @@ def create_tables():
         + owner_apts_view
         + owner_rating_view
         + customer_reservation_view
+        + owner_reservation_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -648,7 +649,7 @@ def get_owner_rating(owner_id: int) -> float:
 def get_top_customer() -> Customer:
     conn = Connector.DBConnector()
     try:
-        query = sql.SQL("""
+        get_top_customer_query = sql.SQL("""
             SELECT c.CustomerID, c.Name
             FROM Customer c
             JOIN (
@@ -658,7 +659,7 @@ def get_top_customer() -> Customer:
                 LIMIT 1
             ) rc ON c.CustomerID = rc.CustomerID;
         """)
-        rows, result = conn.execute(query)
+        rows, result = conn.execute(get_top_customer_query)
     except Exception as e:
         conn.close()
         return Customer.bad_customer()
@@ -669,10 +670,27 @@ def get_top_customer() -> Customer:
     return Customer(customer_id= result.rows[0][0], customer_name= result.rows[0][1])
 
 
+
 # Output: a list of tuples of (owner_name, total_reservation_count) of all owners in the database.
 def reservations_per_owner() -> List[Tuple[str, int]]:
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    try:
+        reservations_per_owner_query = sql.SQL("""
+            SELECT OwnerID, ReservationCount
+            FROM OwnerReservation;
+        """)
+        _, resultSet = conn.execute(reservations_per_owner_query)
+        if(resultSet.isEmpty()):
+            conn.close()
+            return []
+        owners = []
+        for row in resultSet.rows:
+            owners.append((row[0], row[1]))
+        conn.close()
+        return owners
+    except Exception as e:
+        conn.close()
+        return []
 
 
 # ---------------------------------- ADVANCED API: ----------------------------------
