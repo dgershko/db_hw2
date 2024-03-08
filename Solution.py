@@ -41,9 +41,9 @@ def create_tables():
     """
     create_owns_table = """
     CREATE TABLE IF NOT EXISTS Owns (
-        OwnerID INT NOT NULL REFERENCES Owner(OwnerID) ON DELETE CASCADE ON UPDATE CASCADE,
-        ApartmentID INT NOT NULL REFERENCES Apartment(ApartmentID) ON DELETE CASCADE ON UPDATE CASCADE,
-        PRIMARY KEY (OwnerID, ApartmentID)
+        OwnerID INT NOT NULL REFERENCES Owner(OwnerID) ON DELETE CASCADE ON UPDATE CASCADE CHECK(OwnerID>0),
+        ApartmentID INT NOT NULL REFERENCES Apartment(ApartmentID) ON DELETE CASCADE ON UPDATE CASCADE CHECK(ApartmentID>0),
+        PRIMARY KEY (ApartmentID)
     );
     """
     create_reservation_table = """
@@ -53,7 +53,7 @@ def create_tables():
         ApartmentID INT NOT NULL,
         StartDate DATE NOT NULL,
         EndDate DATE NOT NULL,
-        CHECK(EndDate > StartDate),
+        CHECK(EndDate >= StartDate),
         Price DECIMAL NOT NULL CHECK(Price > 0),
         CONSTRAINT FkCustomer
             FOREIGN KEY (CustomerID) 
@@ -91,8 +91,8 @@ def create_tables():
     # ReviewID SERIAL PRIMARY KEY,
     create_review_table = """
     CREATE TABLE IF NOT EXISTS Review (
-        CustomerID INT NOT NULL,
-        ApartmentID INT NOT NULL,
+        CustomerID INT NOT NULL CHECK(CustomerID>0),
+        ApartmentID INT NOT NULL CHECK(ApartmentID>0),
         PRIMARY KEY (CustomerID, ApartmentID),
         Rating INT NOT NULL CHECK(Rating >= 1 AND Rating <= 10),
         ReviewDate DATE NOT NULL,
@@ -248,6 +248,8 @@ def delete_owner(owner_id: int) -> ReturnValue:  # Daniel
         return handle_errors(e)
     conn.close()
     if affected_lines < 1:
+        if owner_id is None or owner_id <= 0:
+            return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
 
@@ -308,7 +310,7 @@ def delete_apartment(apartment_id: int) -> ReturnValue:  # Doron
     conn = Connector.DBConnector()
     delete_apartment_query = sql.SQL(
         """
-    DELETE FROM Apartment WHERE ApartmentID = {apartment_id}
+    DELETE FROM Apartment WHERE {apartment_id} > 0 AND ApartmentID = {apartment_id}
     """
     ).format(apartment_id=sql.Literal(apartment_id))
     try:
@@ -318,6 +320,8 @@ def delete_apartment(apartment_id: int) -> ReturnValue:  # Doron
         return handle_errors(e)
     if rows_affected != 1:
         conn.close()
+        if (apartment_id is None or apartment_id <= 0):
+            return ReturnValue.BAD_PARAMS
         return ReturnValue["NOT_EXISTS"]
     conn.commit()
     conn.close()
@@ -365,7 +369,7 @@ def delete_customer(customer_id: int) -> ReturnValue:  # Daniel
     conn = Connector.DBConnector()
     delete_customer_query = sql.SQL(
         """
-    DELETE FROM Customer WHERE CustomerID = {customer_id}
+    DELETE FROM Customer WHERE {customer_id}>0 AND CustomerID = {customer_id}
     """
     ).format(customer_id=sql.Literal(customer_id))
     try:
@@ -375,6 +379,8 @@ def delete_customer(customer_id: int) -> ReturnValue:  # Daniel
         return handle_errors(e)
     conn.close()
     if rows_affected < 1:
+        if customer_id<=0 or customer_id is None:
+            return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
 
@@ -392,10 +398,12 @@ def customer_made_reservation(
         """
     INSERT INTO Reservation (CustomerID, ApartmentID, StartDate, EndDate, Price) 
     SELECT {customer_id}, {apartment_id}, {start_date}, {end_date}, {total_price}
-    WHERE NOT EXISTS (
+    WHERE {apartment_id} > 0
+    AND {customer_id} > 0
+    AND NOT EXISTS (
         SELECT * FROM Reservation
         WHERE ApartmentId = {apartment_id} 
-        AND StartDate <= {end_date} AND EndDate >= {start_date}
+        AND StartDate < {end_date} AND EndDate > {start_date}
     );
     """
     ).format(
@@ -459,7 +467,7 @@ def customer_reviewed_apartment(
         SELECT * FROM Reservation
         WHERE CustomerID = {customer_id}
         AND ApartmentID = {apartment_id}
-        AND (EndDate < {review_date})
+        AND (EndDate <= {review_date})
     );
     """
     ).format(
@@ -557,6 +565,8 @@ def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue:  # D
     conn.commit()
     conn.close()
     if rows_affected != 1:
+        if owner_id is None or owner_id<=0 or apartment_id is None or apartment_id<=0:
+            return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
 
