@@ -408,7 +408,7 @@ class Test(AbstractTest):
                 'total_price': 2000}
         self.assertEqual(ReturnValue.OK, Solution.customer_made_reservation(**res3),
                          'Customer 2 makes reservation for Apartment 2')
-        expected_results = [(1, 1), (2, 2)] # Assuming each owner has one reservation
+        expected_results = [('Owner One', 1), ('Owner Two', 2)] # Assuming each owner has one reservation
         actual_results = Solution.reservations_per_owner()
 
         self.assertListEqual(sorted(expected_results), sorted(actual_results), 'Verify reservation counts per owner')

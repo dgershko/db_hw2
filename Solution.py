@@ -749,7 +749,7 @@ GROUP BY o.Name;
             return []
         owners = []
         for row in resultSet.rows:
-            owners.append((row[0], row[1]))
+            owners.append((str(row[0]), int(row[1])))
         conn.close()
         return owners
     except Exception as e:
