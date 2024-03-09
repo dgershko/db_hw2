@@ -115,72 +115,56 @@ def create_tables():
     """
     owner_reservation_count_view = """
     CREATE OR REPLACE VIEW OwnerReservation AS
-SELECT o.Name, COUNT(*) as ReservationCount
-FROM OwnerApartments oa
-JOIN Reservation r ON oa.ApartmentID = r.ApartmentID
-JOIN Owner o ON oa.OwnerID = o.OwnerID
-GROUP BY oa.OwnerID, o.Name;
-
+    SELECT o.Name, COUNT(*) as ReservationCount
+    FROM OwnerApartments oa
+    JOIN Reservation r ON oa.ApartmentID = r.ApartmentID
+    JOIN Owner o ON oa.OwnerID = o.OwnerID
+    GROUP BY oa.OwnerID, o.Name;
     """
     uniq_CityCountry_count_view = """
     CREATE VIEW TotalCityCountryCount AS
-SELECT COUNT(DISTINCT City || ', ' || Country) AS TotalCityCountryCount
-FROM Apartment;
+    SELECT COUNT(DISTINCT(City, Country)) AS TotalCityCountryCount
+    FROM Apartment;
     """
     owner_CityCountry_count_view = """
     CREATE VIEW OwnerCityCountryCount AS
-SELECT
-    o.OwnerID,
-    o.Name,
-    COUNT(DISTINCT a.City || ', ' || a.Country) AS OwnerCityCountryCount
-FROM
-    Owner o
+    SELECT o.OwnerID, o.Name, COUNT(DISTINCT(a.City, a.Country)) AS OwnerCityCountryCount
+    FROM Owner o
     JOIN Owns ow ON o.OwnerID = ow.OwnerID
     JOIN Apartment a ON ow.ApartmentID = a.ApartmentID
-GROUP BY
-    o.OwnerID;
+    GROUP BY o.OwnerID;
     """
     avg_nightly_price_view = """
-CREATE VIEW AvgNightlyPrices AS
-SELECT
-    Reservation.ApartmentID,
-    AVG(Reservation.Price / NULLIF(Reservation.EndDate - Reservation.StartDate, 0)) AS AvgNightlyPrice
-FROM
-    Reservation
-GROUP BY
-    Reservation.ApartmentID;
-
+    CREATE VIEW AvgNightlyPrices AS
+    SELECT Reservation.ApartmentID, AVG(Reservation.Price / NULLIF(Reservation.EndDate - Reservation.StartDate, 0)) AS AvgNightlyPrice
+    FROM Reservation
+    GROUP BY Reservation.ApartmentID;
     """
     avg_apt_ratings_view = """
-    CREATE VIEW AvgApartmentRatings AS
-SELECT
-    Review.ApartmentID,
-    AVG(Review.Rating) AS AvgRating
-FROM
-    Review
-GROUP BY
-    Review.ApartmentID;
-"""
+    CREATE OR REPLACE VIEW AvgAptRating AS 
+    SELECT apt.ApartmentId, COALESCE(AVG(rv.Rating), 0) AS AvgRating
+    FROM Apartment apt
+    LEFT JOIN Review rv ON rv.ApartmentID = apt.ApartmentID
+    GROUP BY apt.ApartmentID;
+    """
     apt_value_for_money_view = """
-    CREATE VIEW ApartmentValueForMoney AS
-SELECT
-    n.ApartmentID,
-    r.AvgRating / NULLIF(n.AvgNightlyPrice, 0) AS ValueForMoney
-FROM
-    AvgNightlyPrices n
-JOIN
-    AvgApartmentRatings r ON n.ApartmentID = r.ApartmentID;
-"""
+    CREATE VIEW ApartmentValue AS
+    SELECT ap.ApartmentID, (ar.AvgRating / ap.AvgNightlyPrice) AS Value
+    FROM AvgNightlyPrices ap
+    JOIN AvgAptRating ar ON ar.ApartmentID = ap.ApartmentID;
+    """
     monthly_reservation_profits_view = """
     CREATE VIEW MonthlyReservationProfits AS
-SELECT
-    EXTRACT(YEAR FROM EndDate) AS Year,
-    EXTRACT(MONTH FROM EndDate) AS Month,
-    SUM(Price * 0.15) AS Profit
-FROM
-    Reservation
-GROUP BY
-    Year, Month;
+    SELECT EXTRACT(YEAR FROM EndDate) AS Year, EXTRACT(MONTH FROM EndDate) AS Month, SUM(Price * 0.15) AS Profit
+    FROM Reservation
+    GROUP BY Year, Month;
+    """
+    review_ratios_view = """
+    CREATE VIEW RatingRatio AS
+    SELECT rv1.CustomerID as CustomerID, rv2.CustomerID as OtherCustomerID, AVG(rv1.Rating::float / rv2.Rating) AS AvgRatio
+    FROM Review rv1
+    JOIN Review rv2 ON rv1.ApartmentID = rv2.ApartmentID AND rv1.CustomerID != rv2.customerID
+    GROUP BY rv1.CustomerID, rv2.CustomerID
     """
     full_query = (
         create_customer_table
@@ -200,6 +184,7 @@ GROUP BY
         + avg_apt_ratings_view
         + apt_value_for_money_view
         + monthly_reservation_profits_view
+        + review_ratios_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -365,7 +350,7 @@ def delete_apartment(apartment_id: int) -> ReturnValue:  # Doron
         return handle_errors(e)
     if rows_affected != 1:
         conn.close()
-        if (apartment_id is None or apartment_id <= 0):
+        if apartment_id is None or apartment_id <= 0:
             return ReturnValue.BAD_PARAMS
         return ReturnValue["NOT_EXISTS"]
     conn.commit()
@@ -383,7 +368,9 @@ def add_customer(customer: Customer) -> ReturnValue:  # Daniel
     INSERT INTO Customer (CustomerID, Name)
     VALUES({customer_id}, {customer_name})
     """
-    ).format(customer_id=sql.Literal(customer_id), customer_name=sql.Literal(customer_name))
+    ).format(
+        customer_id=sql.Literal(customer_id), customer_name=sql.Literal(customer_name)
+    )
     try:
         conn.execute(add_customer_query)
         conn.commit()
@@ -424,7 +411,7 @@ def delete_customer(customer_id: int) -> ReturnValue:  # Daniel
         return handle_errors(e)
     conn.close()
     if rows_affected < 1:
-        if customer_id<=0 or customer_id is None:
+        if customer_id <= 0 or customer_id is None:
             return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
@@ -481,7 +468,9 @@ def customer_cancelled_reservation(
     DELETE FROM Reservation WHERE CustomerID = {customer_id} AND ApartmentID = {apartment_id} AND StartDate = {start_date}
     """
     ).format(
-        customer_id=sql.Literal(customer_id), apartment_id=sql.Literal(apartment_id), start_date=sql.Literal(start_date)
+        customer_id=sql.Literal(customer_id),
+        apartment_id=sql.Literal(apartment_id),
+        start_date=sql.Literal(start_date),
     )
     try:
         rows_affected, _ = conn.execute(customer_cancelled_reservation_query)
@@ -491,7 +480,12 @@ def customer_cancelled_reservation(
     conn.commit()
     conn.close()
     if rows_affected != 1:
-        if(customer_id is None or customer_id <=0 or apartment_id is None or apartment_id <=0):
+        if (
+            customer_id is None
+            or customer_id <= 0
+            or apartment_id is None
+            or apartment_id <= 0
+        ):
             return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
@@ -532,7 +526,15 @@ def customer_reviewed_apartment(
     conn.commit()
     conn.close()
     if rows_affected < 1:
-        if (rating is None or rating<1 or rating>10 or apartment_id is None or apartment_id <=0 or customer_id is None or customer_id<=0):
+        if (
+            rating is None
+            or rating < 1
+            or rating > 10
+            or apartment_id is None
+            or apartment_id <= 0
+            or customer_id is None
+            or customer_id <= 0
+        ):
             return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
@@ -563,7 +565,15 @@ def customer_updated_review(
     try:
         rows_affected, _ = conn.execute(customer_updated_review_query)
         if rows_affected == 0:
-            if(customer_id is None or customer_id<=0 or apartment_id is None or apartment_id <=0 or new_rating is None or new_rating<1 or new_rating>10):
+            if (
+                customer_id is None
+                or customer_id <= 0
+                or apartment_id is None
+                or apartment_id <= 0
+                or new_rating is None
+                or new_rating < 1
+                or new_rating > 10
+            ):
                 return ReturnValue["BAD_PARAMS"]
             return ReturnValue["NOT_EXISTS"]
     except exception_list as e:
@@ -613,7 +623,12 @@ def owner_drops_apartment(owner_id: int, apartment_id: int) -> ReturnValue:  # D
     conn.commit()
     conn.close()
     if rows_affected != 1:
-        if owner_id is None or owner_id<=0 or apartment_id is None or apartment_id<=0:
+        if (
+            owner_id is None
+            or owner_id <= 0
+            or apartment_id is None
+            or apartment_id <= 0
+        ):
             return ReturnValue["BAD_PARAMS"]
         return ReturnValue["NOT_EXISTS"]
     return ReturnValue["OK"]
@@ -644,11 +659,13 @@ def get_apartment_owner(apartment_id: int) -> Owner:  # Doron
 # Get a list of all apartments owned by owner.
 def get_owner_apartments(owner_id: int) -> List[Apartment]:  # Daniel
     conn = Connector.DBConnector()
-    get_owner_apartments_query = sql.SQL("""
+    get_owner_apartments_query = sql.SQL(
+        """
     SELECT *
     FROM OwnerApartments    
     WHERE OwnerID = {owner_id}                      
-    """).format(owner_id=sql.Literal(owner_id))
+    """
+    ).format(owner_id=sql.Literal(owner_id))
     try:
         num_apts, apts_data = conn.execute(get_owner_apartments_query)
     except exception_list as e:
@@ -687,7 +704,7 @@ def get_apartment_rating(apartment_id: int) -> float:
 def get_owner_rating(owner_id: int) -> float:
     conn = Connector.DBConnector()
     get_owner_rating_query = sql.SQL(
-    """
+        """
 SELECT COALESCE(AVG(COALESCE(r.AvgRating, 0)), 0) AS AvgRating
 FROM Owner o
 LEFT JOIN OwnerApartments oa ON o.OwnerID = oa.OwnerID
@@ -711,16 +728,18 @@ WHERE o.OwnerID = {owner_id}
 def get_top_customer() -> Customer:
     conn = Connector.DBConnector()
     try:
-        get_top_customer_query = sql.SQL("""
-            SELECT c.CustomerID, c.Name
-            FROM Customer c
-            JOIN (
-                SELECT CustomerID, Reservations
-                FROM CustomerReservations
-                ORDER BY Reservations DESC, CustomerID ASC
-                LIMIT 1
-            ) rc ON c.CustomerID = rc.CustomerID;
-        """)
+        get_top_customer_query = sql.SQL(
+        """
+        SELECT c.CustomerID, c.Name
+        FROM Customer c
+        JOIN (
+            SELECT CustomerID, Reservations
+            FROM CustomerReservations
+            ORDER BY Reservations DESC, CustomerID ASC
+            LIMIT 1
+        ) rc ON c.CustomerID = rc.CustomerID;
+        """
+        )
         rows, result = conn.execute(get_top_customer_query)
     except Exception as e:
         conn.close()
@@ -729,27 +748,28 @@ def get_top_customer() -> Customer:
         conn.close()
         return Customer.bad_customer()
     conn.close()
-    return Customer(customer_id= result.rows[0][0], customer_name= result.rows[0][1])
-
+    return Customer(customer_id=result.rows[0][0], customer_name=result.rows[0][1])
 
 
 # Output: a list of tuples of (owner_name, total_reservation_count) of all owners in the database.
 def reservations_per_owner() -> List[Tuple[str, int]]:
     conn = Connector.DBConnector()
     try:
-        reservations_per_owner_query = sql.SQL("""
+        reservations_per_owner_query = sql.SQL(
+            """
 SELECT o.Name AS owner_name, COALESCE(SUM(r.ReservationCount), 0) AS total_reservation_count
 FROM Owner o
 LEFT JOIN OwnerReservation r ON o.Name = r.Name
 GROUP BY o.Name;
-        """)
+        """
+        )
         _, resultSet = conn.execute(reservations_per_owner_query)
-        if(resultSet.isEmpty()):
+        if resultSet.isEmpty():
             conn.close()
             return []
         owners = []
         for row in resultSet.rows:
-            owners.append((str(row[0]), int(row[1])))
+            owners.append((row[0], row[1]))
         conn.close()
         return owners
     except Exception as e:
@@ -764,26 +784,21 @@ GROUP BY o.Name;
 def get_all_location_owners() -> List[Owner]:
     conn = Connector.DBConnector()
     try:
-        query = sql.SQL("""
-SELECT
-    o.OwnerID,
-    o.Name
-FROM
-    OwnerCityCountryCount o,
-    TotalCityCountryCount
-WHERE
-    o.OwnerCityCountryCount = TotalCityCountryCount.TotalCityCountryCount;
-
-        """)
+        query = sql.SQL(
+        """
+        SELECT o.OwnerID, o.Name
+        FROM OwnerCityCountryCount o, TotalCityCountryCount
+        WHERE o.OwnerCityCountryCount = TotalCityCountryCount.TotalCityCountryCount;
+        """
+        )
         _, resultSet = conn.execute(query)
         if resultSet.isEmpty():
             conn.close()
             return []
-        owners = [Owner(owner_id=row[0], owner_name=row[1]) for row in resultSet.rows]
+        owners = [create_owner_from_response(owner) for owner in resultSet]
         conn.close()
         return owners
     except Exception as e:
-        print(e)  # For debugging
         conn.close()
         return []
 
@@ -792,60 +807,50 @@ WHERE
 def best_value_for_money() -> Apartment:
     conn = Connector.DBConnector()
     try:
-        query = sql.SQL("""
-            SELECT
-        ApartmentID,
-        MAX(ValueForMoney) AS MaxValueForMoney
-    FROM
-        ApartmentValueForMoney
-    GROUP BY
-        ApartmentID
-    ORDER BY
-        MaxValueForMoney DESC
-    LIMIT 1;
-    """)
-        rows_effected, resultSet = conn.execute(query)
-        if (resultSet.isEmpty()):
+        query = sql.SQL(
+        """
+        SELECT apt.*
+        FROM Apartment apt
+        JOIN ApartmentValue av ON av.ApartmentID = apt.ApartmentID
+        ORDER BY av.Value DESC
+        LIMIT 1;
+        """
+        )
+        rows_effected, result_set = conn.execute(query)
+        if result_set.isEmpty():
             return Apartment.bad_apartment()
-        return Apartment(id=resultSet.rows[0][0], address=resultSet.rows[0][1], city=resultSet.rows[0][2],
-                         country=resultSet.rows[0][3], size=resultSet.rows[0][4])
+        conn.close()
+        return create_apartment_from_response(result_set[0])
 
     except Exception as e:
-        print(e)
-        conn.rollback()
-        return Apartment.bad_apartment()
-    finally:
         conn.close()
+        return Apartment.bad_apartment()
 
 
 def profit_per_month(year: int) -> List[Tuple[int, float]]:
     conn = Connector.DBConnector()
     try:
-        query = sql.SQL("""
-    WITH MonthSeries AS (
-    SELECT generate_series(1, 12) AS Month
-)
-SELECT
-    MS.Month,
-    COALESCE(MRP.Profit, 0) AS Profit
-FROM
-    MonthSeries MS
-    LEFT JOIN MonthlyReservationProfits MRP ON MS.Month = MRP.Month AND MRP.Year = {year}
-ORDER BY
-    MS.Month;
-    """).format(year=sql.Literal(year))
+        query = sql.SQL(
+        """
+        WITH MonthSeries AS (SELECT generate_series(1, 12) AS Month)
+        SELECT MS.Month, COALESCE(MRP.Profit, 0) AS Profit
+        FROM MonthSeries MS
+        LEFT JOIN MonthlyReservationProfits MRP ON MS.Month = MRP.Month AND MRP.Year = {year}
+        ORDER BY MS.Month;
+        """
+        ).format(year=sql.Literal(year))
         rows_effected, resultSet = conn.execute(query)
-        if (resultSet.isEmpty()): return []
+        if resultSet.isEmpty():
+            return []
         profits = []
         for row in resultSet.rows:
             profits.append((row[0], row[1]))
         return profits
     except Exception as e:
-        print(e)
-        conn.rollback()
         return []
     finally:
         conn.close()
+
 
 """ In this query you will need to approximate what the given customer will rate an apartment they haven’t been in, based on their and other users’ reviews.
 You will use the following method for the approximation:
@@ -859,8 +864,30 @@ Generate an approximation for all apartments where it is possible. """
 
 
 def get_apartment_recommendation(customer_id: int) -> List[Tuple[Apartment, float]]:
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    try:
+        query = sql.SQL(
+        """
+        SELECT apt.*, 
+            AVG(LEAST(10, GREATEST(1, rv.Rating * (SELECT avgRatio FROM RatingRatio rt WHERE rt.CustomerID = {customer_id} AND rt.OtherCustomerID = rv.CustomerID)))) AS PredictedRating
+        FROM Apartment apt
+        JOIN Review rv ON rv.ApartmentID = apt.ApartmentID AND rv.CustomerID != {customer_id}
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM Reservation res
+            WHERE res.CustomerID = {customer_id} AND res.ApartmentID = apt.ApartmentID
+        )
+        GROUP BY apt.ApartmentID
+        """).format(customer_id=sql.Literal(customer_id))
+        rows_effected, resultSet = conn.execute(query)
+        return [(create_apartment_from_response(row), row["PredictedRating"]) for row in resultSet]
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return []
+
+    finally:
+        conn.close()
 
 
 # Utility functions:
