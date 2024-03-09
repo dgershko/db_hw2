@@ -143,6 +143,25 @@ JOIN Owner o ON oa.OwnerID = o.OwnerID
 GROUP BY oa.OwnerID, o.Name;
 
     """
+    TotalCityCountryCount_view = """
+    CREATE VIEW TotalCityCountryCount AS
+SELECT COUNT(DISTINCT City || ', ' || Country) AS TotalCityCountryCount
+FROM Apartment;
+    """
+    OwnerCityCountryCount_view = """
+    CREATE VIEW OwnerCityCountryCount AS
+SELECT
+    o.OwnerID,
+    o.Name,
+    COUNT(DISTINCT a.City || ', ' || a.Country) AS OwnerCityCountryCount
+FROM
+    Owner o
+    JOIN Owns ow ON o.OwnerID = ow.OwnerID
+    JOIN Apartment a ON ow.ApartmentID = a.ApartmentID
+GROUP BY
+    o.OwnerID;
+    """
+
     full_query = (
         create_customer_table
         + create_owner_table
@@ -155,6 +174,8 @@ GROUP BY oa.OwnerID, o.Name;
         + owner_rating_view
         + customer_reservation_view
         + owner_reservation_view
+        + TotalCityCountryCount_view
+        + OwnerCityCountryCount_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -717,8 +738,30 @@ GROUP BY o.Name;
 
 # Return all owners that own an apartment in every city there are apartments in.
 def get_all_location_owners() -> List[Owner]:
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    try:
+        query = sql.SQL("""
+SELECT
+    o.OwnerID,
+    o.Name
+FROM
+    OwnerCityCountryCount o,
+    TotalCityCountryCount
+WHERE
+    o.OwnerCityCountryCount = TotalCityCountryCount.TotalCityCountryCount;
+
+        """)
+        _, resultSet = conn.execute(query)
+        if resultSet.isEmpty():
+            conn.close()
+            return []
+        owners = [Owner(owner_id=row[0], owner_name=row[1]) for row in resultSet.rows]
+        conn.close()
+        return owners
+    except Exception as e:
+        print(e)  # For debugging
+        conn.close()
+        return []
 
 
 # Get the apartment that has the best reviews compared to its average nightly price.
