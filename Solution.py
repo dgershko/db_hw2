@@ -161,7 +161,48 @@ FROM
 GROUP BY
     o.OwnerID;
     """
+    AvgNightlyPrices_view = """
+CREATE VIEW AvgNightlyPrices AS
+SELECT
+    Reservation.ApartmentID,
+    AVG(Reservation.Price / NULLIF(Reservation.EndDate - Reservation.StartDate, 0)) AS AvgNightlyPrice
+FROM
+    Reservation
+GROUP BY
+    Reservation.ApartmentID;
 
+    """
+    avgApt_rating_view = """
+    CREATE VIEW AvgApartmentRatings AS
+SELECT
+    Review.ApartmentID,
+    AVG(Review.Rating) AS AvgRating
+FROM
+    Review
+GROUP BY
+    Review.ApartmentID;
+"""
+    avg_val_for_money_view = """
+    CREATE VIEW ApartmentValueForMoney AS
+SELECT
+    n.ApartmentID,
+    r.AvgRating / NULLIF(n.AvgNightlyPrice, 0) AS ValueForMoney
+FROM
+    AvgNightlyPrices n
+JOIN
+    AvgApartmentRatings r ON n.ApartmentID = r.ApartmentID;
+"""
+    last_view = """
+    CREATE VIEW MonthlyReservationProfits AS
+SELECT
+    EXTRACT(YEAR FROM EndDate) AS Year,
+    EXTRACT(MONTH FROM EndDate) AS Month,
+    SUM(Price * 0.15) AS Profit
+FROM
+    Reservation
+GROUP BY
+    Year, Month;
+    """
     full_query = (
         create_customer_table
         + create_owner_table
@@ -176,6 +217,10 @@ GROUP BY
         + owner_reservation_view
         + TotalCityCountryCount_view
         + OwnerCityCountryCount_view
+        + AvgNightlyPrices_view
+        + avgApt_rating_view
+        + avg_val_for_money_view
+        + last_view
     )
     conn.execute(full_query)
     conn.commit()
@@ -766,14 +811,62 @@ WHERE
 
 # Get the apartment that has the best reviews compared to its average nightly price.
 def best_value_for_money() -> Apartment:
-    # TODO: implement
-    pass
+    conn = Connector.DBConnector()
+    try:
+        query = sql.SQL("""
+            SELECT
+        ApartmentID,
+        MAX(ValueForMoney) AS MaxValueForMoney
+    FROM
+        ApartmentValueForMoney
+    GROUP BY
+        ApartmentID
+    ORDER BY
+        MaxValueForMoney DESC
+    LIMIT 1;
+    """)
+        rows_effected, resultSet = conn.execute(query)
+        if (resultSet.isEmpty()):
+            return Apartment.bad_apartment()
+        return Apartment(id=resultSet.rows[0][0], address=resultSet.rows[0][1], city=resultSet.rows[0][2],
+                         country=resultSet.rows[0][3], size=resultSet.rows[0][4])
+
+    except Exception as e:
+        print(e)
+        conn.rollback()
+        return Apartment.bad_apartment()
+    finally:
+        conn.close()
 
 
 def profit_per_month(year: int) -> List[Tuple[int, float]]:
-    # TODO: implement
-    pass
-
+    conn = Connector.DBConnector()
+    try:
+        query = sql.SQL("""
+    WITH MonthSeries AS (
+    SELECT generate_series(1, 12) AS Month
+)
+SELECT
+    MS.Month,
+    COALESCE(MRP.Profit, 0) AS Profit
+FROM
+    MonthSeries MS
+    LEFT JOIN MonthlyReservationProfits MRP ON MS.Month = MRP.Month AND MRP.Year = {year}
+ORDER BY
+    MS.Month;
+    """).format(year=sql.Literal(year))
+        rows_effected, resultSet = conn.execute(query)
+        if (resultSet.isEmpty()): return []
+        profits = []
+        for row in resultSet.rows:
+            profits.append((row[0], row[1]))
+        return profits
+    except Exception as e:
+        print(e)
+        conn.rollback()
+        return []
+    finally:
+        conn.close()
 
 """ In this query you will need to approximate what the given customer will rate an apartment they haven’t been in, based on their and other users’ reviews.
 You will use the following method for the approximation:
