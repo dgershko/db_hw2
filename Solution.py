@@ -67,27 +67,6 @@ def create_tables():
             ON UPDATE CASCADE
     );
     """
-    """
-    CREATE TABLE IF NOT EXISTS Reservation (
-        ReservationID SERIAL PRIMARY KEY,
-        CustomerID INT NOT NULL,
-        ApartmentID INT NOT NULL,
-        StartDate DATE NOT NULL,
-        EndDate DATE NOT NULL,
-        CHECK(EndDate > StartDate),
-        Price DECIMAL NOT NULL CHECK(Price > 0),
-        CONSTRAINT FkCustomer
-            FOREIGN KEY (CustomerID) 
-            REFERENCES Customer(CustomerID)
-            ON DELETE CASCADE
-            ON UPDATE CASCADE,
-        CONSTRAINT FkApartment
-            FOREIGN KEY (ApartmentID) 
-            REFERENCES Apartment(ApartmentID)
-            ON DELETE CASCADE
-            ON UPDATE CASCADE
-    );
-    """
     # ReviewID SERIAL PRIMARY KEY,
     create_review_table = """
     CREATE TABLE IF NOT EXISTS Review (
@@ -121,20 +100,20 @@ def create_tables():
     JOIN Apartment a ON os.ApartmentID = a.ApartmentID;
     """
     # owner rating view provides a view of the average rating of each owner, using the OwnerApartments view and the Ratings view
-    owner_rating_view = """
+    owner_avg_rating_view = """
     CREATE OR REPLACE VIEW OwnerRating AS
     SELECT oa.OwnerID as OwnerID, AVG(r.AvgRating) as AvgRating
     FROM OwnerApartments oa 
     JOIN Ratings r ON oa.ApartmentID = r.ApartmentID
     GROUP BY oa.OwnerID;
     """
-    customer_reservation_view = """
+    customer_reservation_count_view = """
     CREATE OR REPLACE VIEW CustomerReservations AS
     SELECT CustomerID, COUNT(*) as Reservations
     FROM Reservation
     GROUP BY CustomerID;
     """
-    owner_reservation_view = """
+    owner_reservation_count_view = """
     CREATE OR REPLACE VIEW OwnerReservation AS
 SELECT o.Name, COUNT(*) as ReservationCount
 FROM OwnerApartments oa
@@ -143,12 +122,12 @@ JOIN Owner o ON oa.OwnerID = o.OwnerID
 GROUP BY oa.OwnerID, o.Name;
 
     """
-    TotalCityCountryCount_view = """
+    uniq_CityCountry_count_view = """
     CREATE VIEW TotalCityCountryCount AS
 SELECT COUNT(DISTINCT City || ', ' || Country) AS TotalCityCountryCount
 FROM Apartment;
     """
-    OwnerCityCountryCount_view = """
+    owner_CityCountry_count_view = """
     CREATE VIEW OwnerCityCountryCount AS
 SELECT
     o.OwnerID,
@@ -161,7 +140,7 @@ FROM
 GROUP BY
     o.OwnerID;
     """
-    AvgNightlyPrices_view = """
+    avg_nightly_price_view = """
 CREATE VIEW AvgNightlyPrices AS
 SELECT
     Reservation.ApartmentID,
@@ -172,7 +151,7 @@ GROUP BY
     Reservation.ApartmentID;
 
     """
-    avgApt_rating_view = """
+    avg_apt_ratings_view = """
     CREATE VIEW AvgApartmentRatings AS
 SELECT
     Review.ApartmentID,
@@ -182,7 +161,7 @@ FROM
 GROUP BY
     Review.ApartmentID;
 """
-    avg_val_for_money_view = """
+    apt_value_for_money_view = """
     CREATE VIEW ApartmentValueForMoney AS
 SELECT
     n.ApartmentID,
@@ -192,7 +171,7 @@ FROM
 JOIN
     AvgApartmentRatings r ON n.ApartmentID = r.ApartmentID;
 """
-    last_view = """
+    monthly_reservation_profits_view = """
     CREATE VIEW MonthlyReservationProfits AS
 SELECT
     EXTRACT(YEAR FROM EndDate) AS Year,
@@ -212,15 +191,15 @@ GROUP BY
         + create_review_table
         + apt_avg_rating_view
         + owner_apts_view
-        + owner_rating_view
-        + customer_reservation_view
-        + owner_reservation_view
-        + TotalCityCountryCount_view
-        + OwnerCityCountryCount_view
-        + AvgNightlyPrices_view
-        + avgApt_rating_view
-        + avg_val_for_money_view
-        + last_view
+        + owner_avg_rating_view
+        + customer_reservation_count_view
+        + owner_reservation_count_view
+        + uniq_CityCountry_count_view
+        + owner_CityCountry_count_view
+        + avg_nightly_price_view
+        + avg_apt_ratings_view
+        + apt_value_for_money_view
+        + monthly_reservation_profits_view
     )
     conn.execute(full_query)
     conn.commit()
