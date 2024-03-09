@@ -136,10 +136,12 @@ def create_tables():
     """
     owner_reservation_view = """
     CREATE OR REPLACE VIEW OwnerReservation AS
-    SELECT oa.OwnerID, COUNT(rs.ReservationID) as ReservationCount
-    FROM OwnerApartments oa
-    JOIN Reservation rs ON rs.ApartmentID = oa.ApartmentID
-    GROUP BY oa.OwnerId
+SELECT o.Name, COUNT(*) as ReservationCount
+FROM OwnerApartments oa
+JOIN Reservation r ON oa.ApartmentID = r.ApartmentID
+JOIN Owner o ON oa.OwnerID = o.OwnerID
+GROUP BY oa.OwnerID, o.Name;
+
     """
     full_query = (
         create_customer_table
@@ -641,7 +643,11 @@ def get_owner_rating(owner_id: int) -> float:
     conn = Connector.DBConnector()
     get_owner_rating_query = sql.SQL(
     """
-    SELECT AvgRating FROM OwnerRating WHERE OwnerID = {owner_id}
+SELECT COALESCE(AVG(COALESCE(r.AvgRating, 0)), 0) AS AvgRating
+FROM Owner o
+LEFT JOIN OwnerApartments oa ON o.OwnerID = oa.OwnerID
+LEFT JOIN Ratings r ON oa.ApartmentID = r.ApartmentID
+WHERE o.OwnerID = {owner_id}
     """
     ).format(owner_id=sql.Literal(owner_id))
     try:
@@ -687,8 +693,10 @@ def reservations_per_owner() -> List[Tuple[str, int]]:
     conn = Connector.DBConnector()
     try:
         reservations_per_owner_query = sql.SQL("""
-            SELECT OwnerID, ReservationCount
-            FROM OwnerReservation;
+SELECT o.Name AS owner_name, COALESCE(SUM(r.ReservationCount), 0) AS total_reservation_count
+FROM Owner o
+LEFT JOIN OwnerReservation r ON o.Name = r.Name
+GROUP BY o.Name;
         """)
         _, resultSet = conn.execute(reservations_per_owner_query)
         if(resultSet.isEmpty()):
